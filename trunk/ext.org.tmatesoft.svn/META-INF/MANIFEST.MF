@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: SVNKit
 Bundle-SymbolicName: org.tmatesoft.svn
-Bundle-Version: 1.7.4.rc5
+Bundle-Version: 1.7.4
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Bundle-Vendor: haumacher.de
 Export-Package: org.tmatesoft.svn.core,
