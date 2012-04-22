@@ -1,0 +1,3 @@
+#summary Eclipse plug-in for SVN from tigris.org
+
+Subclipse is a plug-in for Eclipse for SVN from the inventors of Subversion.
