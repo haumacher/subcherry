@@ -1,0 +1,10 @@
+#summary The "Future" view shows new changes on parent branches
+
+= Introduction =
+
+With the [[Subclipse]] plugin for Eclipse, you only get information about the history of a file. But if a file has been updated on a parent branch after the creation of your current branch, there is no easy way to be informed about such changes. Such information is especially important, if you have discovered a bug and you would like to know, if this bug has already been fixed on a parent branch (e.g. trunk).
+
+
+= Details =
+
+The Future view of SubCherry is a compromise between the per-file history of CVS, where you see a mess of changes from all branches, and the SVN history, where you only see such changes your current file is based on.
