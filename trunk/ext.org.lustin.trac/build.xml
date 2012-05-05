@@ -32,9 +32,19 @@
 			includes="org.lustin.trac_xml_rpc.jar" 
 			filesetid="jar" />
 		
+		<wtk:dependency
+			url="http://trac-hacks.org/attachment/wiki/XmlRpcPlugin/trac_xml_rpc_example_java.zip?format=raw" 
+			includes="org.lustin.trac_xml_rpc-sources.jar" 
+			filesetid="src" />
+		
 		<copy todir="${lib}">
 			<fileset refid="jar" />
 			<mapper type="merge" to="${ant.project.name}.jar"/>
+		</copy>
+		
+		<copy todir="${lib}">
+			<fileset refid="src" />
+			<mapper type="merge" to="${ant.project.name}-src.zip"/>
 		</copy>
 		
 		<jar destfile="${jar}" manifest="${build}/META-INF/MANIFEST.MF">

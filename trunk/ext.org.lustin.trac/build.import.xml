@@ -30,9 +30,16 @@
 		
 		<wtk:dependency filesetid="trac-xmlrpc:jar" includes="org.lustin.trac_xml_rpc.jar" url="http://trac-hacks.org/attachment/wiki/XmlRpcPlugin/trac_xml_rpc_example_java.zip?format=raw"/>
 		
+		<wtk:dependency filesetid="trac-xmlrpc:src" includes="org.lustin.trac_xml_rpc-sources.jar" url="http://trac-hacks.org/attachment/wiki/XmlRpcPlugin/trac_xml_rpc_example_java.zip?format=raw"/>
+		
 		<copy todir="${trac-xmlrpc:lib}">
 			<fileset refid="trac-xmlrpc:jar"/>
 			<mapper to="${trac-xmlrpc:ant.project.name}.jar" type="merge"/>
+		</copy>
+		
+		<copy todir="${trac-xmlrpc:lib}">
+			<fileset refid="trac-xmlrpc:src"/>
+			<mapper to="${trac-xmlrpc:ant.project.name}-src.zip" type="merge"/>
 		</copy>
 		
 		<jar destfile="${trac-xmlrpc:jar}" manifest="${trac-xmlrpc:build}/META-INF/MANIFEST.MF">
