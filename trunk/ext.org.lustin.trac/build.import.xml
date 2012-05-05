@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project basedir="." default="trac-xmlrpc:prepare" name="trac-xmlrpc" xmlns:wtk="urn:net.sf.wtk.ant.dependencies"><property name="trac-xmlrpc:basedir" value="${basedir}${file.separator}..${file.separator}ext.org.lustin.trac"/><property name="trac-xmlrpc:ant.file" value="build.xml"/><property name="trac-xmlrpc:ant.project.name" value="trac-xmlrpc"/>
+
+	<import file="${trac-xmlrpc:basedir}/../net.sf.wtk.ant.dependencies/build.import.xml"/>
+	<import file="${trac-xmlrpc:basedir}/../net.sf.wtk.ant.namespaces/build.import.xml"/>
+	
+	<property file="${trac-xmlrpc:basedir}/META-INF/MANIFEST.MF" prefix="trac-xmlrpc:mf"/>
+	
+	<property name="trac-xmlrpc:build" value="${trac-xmlrpc:basedir}${file.separator}build"/>
+	<property name="trac-xmlrpc:lib" value="${trac-xmlrpc:basedir}/lib"/>
+	<property name="trac-xmlrpc:jar" value="${trac-xmlrpc:build}${file.separator}${trac-xmlrpc:mf.Bundle-SymbolicName}_${trac-xmlrpc:mf.Bundle-Version}.jar"/>
+
+	<target name="trac-xmlrpc:clean">
+		<delete dir="${trac-xmlrpc:build}"/>
+		<delete dir="${trac-xmlrpc:lib}" includes="*.jar, *.zip"/>
+	</target>
+
+	<target name="trac-xmlrpc:manifest">
+		<mkdir dir="${trac-xmlrpc:build}/META-INF"/>
+		<copy file="${trac-xmlrpc:basedir}/META-INF/MANIFEST.MF" tofile="${trac-xmlrpc:build}/META-INF/MANIFEST.MF"/>
+		<manifest file="${trac-xmlrpc:build}/META-INF/MANIFEST.MF" mode="update">
+			<attribute name="Bundle-ClassPath" value="."/>
+		</manifest>
+	</target>
+		
+	<target depends="namespace4ant.namespace4ant:taskdef-namespace4ant, trac-xmlrpc:manifest" name="trac-xmlrpc:prepare">
+		<namespace4ant/>
+		
+		<mkdir dir="${trac-xmlrpc:build}"/>
+		
+		<wtk:dependency filesetid="trac-xmlrpc:jar" includes="org.lustin.trac_xml_rpc.jar" url="http://trac-hacks.org/attachment/wiki/XmlRpcPlugin/trac_xml_rpc_example_java.zip?format=raw"/>
+		
+		<copy todir="${trac-xmlrpc:lib}">
+			<fileset refid="trac-xmlrpc:jar"/>
+			<mapper to="${trac-xmlrpc:ant.project.name}.jar" type="merge"/>
+		</copy>
+		
+		<jar destfile="${trac-xmlrpc:jar}" manifest="${trac-xmlrpc:build}/META-INF/MANIFEST.MF">
+			<zipgroupfileset dir="${trac-xmlrpc:lib}" includes="${trac-xmlrpc:ant.project.name}.jar"/>
+		</jar>
+		
+		<fileset dir="${trac-xmlrpc:build}" id="trac-xmlrpc:plugin">
+			<filename name="${trac-xmlrpc:mf.Bundle-SymbolicName}_${trac-xmlrpc:mf.Bundle-Version}.jar"/>
+		</fileset>
+	</target>
+</project>

@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Trac-XMLRPC
+Bundle-SymbolicName: org.lustin.trac
+Bundle-Version: 1.0.0
+Export-Package: org.lustin.trac.xmlprc
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Bundle-Vendor: haumacher.de
+Bundle-ClassPath: lib/trac-xmlrpc.jar
