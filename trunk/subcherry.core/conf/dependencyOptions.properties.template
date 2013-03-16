@@ -1,0 +1,19 @@
+#
+# Path the file that should be analyzed.
+#
+path: /trunk/com.top_logic/src/com/top_logic/layout/tree/model/AbstractMutableTLTreeNode.java
+
+#
+# Revision in which to look up the file.
+#
+pegRev: 110322
+
+#
+# Start revision of the diff to analyze.
+#
+startRev: 110321
+
+#
+# End revision of the diff to analyze.
+#
+stopRev: 110322

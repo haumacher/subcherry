@@ -1,0 +1,69 @@
+<project name="svnkit" basedir="." xmlns:wtk="urn:net.sf.wtk.ant.dependencies" default="prepare">
+
+	<import file="${basedir}/../net.sf.wtk.ant.dependencies/build.import.xml"/>
+	<import file="${basedir}/../net.sf.wtk.ant.namespaces/build.import.xml"/>
+	
+	<property file="${basedir}/META-INF/MANIFEST.MF" prefix="mf"/>
+	
+	<property name="version" value="${mf.Bundle-Version}" />
+	<property name="build" value="${basedir}${file.separator}build" />
+	<property name="lib" value="${basedir}/lib" />
+	<property name="jar" value="${build}${file.separator}${mf.Bundle-SymbolicName}_${version}.jar" />
+
+	<target name="clean" description="Removes all generated files.">
+		<delete dir="${build}"/>
+		<delete dir="${lib}" includes="*.jar, *.zip"/>
+	</target>
+
+	<target name="manifest">
+		<mkdir dir="${build}/META-INF"/>
+		<copy file="${basedir}/META-INF/MANIFEST.MF" tofile="${build}/META-INF/MANIFEST.MF"/>
+		<manifest file="${build}/META-INF/MANIFEST.MF" mode="update">
+			<attribute name="Bundle-ClassPath" value="."/>
+		</manifest>
+	</target>
+		
+	<target name="prepare" depends="namespace4ant.namespace4ant:taskdef-namespace4ant, manifest" description="Resolves external dependencies.">
+		<namespace4ant/>
+		
+		<mkdir dir="${build}"/>
+		
+		<wtk:dependency
+			url="http://www.svnkit.com/org.tmatesoft.svn_${version}.standalone.zip" 
+			includes="svnkit-${version}/lib/svnkit-${version}.jar"
+			filesetid="jar" />
+
+		<wtk:dependency
+			url="http://www.svnkit.com/org.tmatesoft.svn_${version}.standalone.zip" 
+			includes="svnkit-${version}/lib/*.jar"
+			filesetid="additional" />
+		
+		<wtk:dependency
+			url="http://www.svnkit.com/org.tmatesoft.svn_${version}.standalone.zip" 
+			includes="svnkit-${version}/src/svnkit-${version}-sources.jar"
+			filesetid="src" />
+		
+		<copy todir="${lib}">
+			<fileset refid="jar" />
+			<mapper type="merge" to="${ant.project.name}.jar"/>
+		</copy>
+		
+		<copy todir="${lib}">
+			<fileset refid="additional" />
+			<mapper type="flatten" />
+		</copy>
+		
+		<copy todir="${lib}">
+			<fileset refid="src" />
+			<mapper type="merge" to="${ant.project.name}-src.zip"/>
+		</copy>
+		
+		<jar destfile="${jar}" manifest="${build}/META-INF/MANIFEST.MF">
+			<zipgroupfileset dir="${lib}" includes="*.jar" excludes="${ant.project.name}.jar"/>
+		</jar>
+		
+		<fileset id="plugin" dir="${build}">
+			<filename name="${mf.Bundle-SymbolicName}_${mf.Bundle-Version}.jar"/>
+		</fileset>
+	</target>
+</project>
