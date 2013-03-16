@@ -2,12 +2,12 @@ package com.subcherry;
 
 import java.io.File;
 
-import com.subcherry.configuration.properties.PropertyConfiguration;
+import de.haumacher.common.config.Value;
 
 /**
  * @version $Revision$ $Author$ $Date$
  */
-public interface Configuration extends PropertyConfiguration {
+public interface Configuration extends Value {
 	
 	long getStartRevision();
 	

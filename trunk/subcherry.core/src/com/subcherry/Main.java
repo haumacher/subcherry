@@ -18,11 +18,12 @@ import org.tmatesoft.svn.core.wc.SVNRevision;
 import org.tmatesoft.svn.core.wc.SVNWCUtil;
 
 import com.subcherry.commit.CommitHandler;
-import com.subcherry.configuration.ConfigurationFactory;
 import com.subcherry.log.DirCollector;
 import com.subcherry.merge.MergeHandler;
 import com.subcherry.utils.Log;
 import com.subcherry.utils.Utils;
+
+import de.haumacher.common.config.PropertiesUtil;
 
 /**
  * @version $Revision$ $Author$ $Date$
@@ -48,8 +49,8 @@ public class Main {
 	public static void main(String[] args) throws IOException, SVNException {
 		installConfiguration();
 
-		LoginCredential tracCredentials = ConfigurationFactory.newConfiguration(LoginCredential.class,
-				"conf/loginCredentials.properties", "trac");
+		LoginCredential tracCredentials = PropertiesUtil.load("conf/loginCredentials.properties", "trac.",
+				LoginCredential.class);
 
 		doMerge(tracCredentials);
 	}
@@ -137,8 +138,8 @@ public class Main {
 	}
 
 	public static SVNClientManager newSVNClientManager() throws IOException {
-		LoginCredential svnCredentials = ConfigurationFactory.newConfiguration(LoginCredential.class,
-				"conf/loginCredentials.properties", "svn");
+		LoginCredential svnCredentials = PropertiesUtil.load("conf/loginCredentials.properties", "svn.",
+				LoginCredential.class);
 		DefaultSVNOptions options = new DefaultSVNOptions();
 		ISVNAuthenticationManager authManager = SVNWCUtil.createDefaultAuthenticationManager(svnCredentials.getUser(),
 				svnCredentials.getPasswd());
@@ -147,7 +148,7 @@ public class Main {
 
 	private static void installConfiguration() throws IOException {
 		if (_config == null) {
-			_config = ConfigurationFactory.newConfiguration(Configuration.class, "conf/configuration.properties");
+			_config = PropertiesUtil.load("conf/configuration.properties", Configuration.class);
 		}
 	}
 

@@ -27,11 +27,13 @@ import org.tmatesoft.svn.core.wc.SVNRevision;
 
 import com.subcherry.Main;
 import com.subcherry.SVNConfig;
-import com.subcherry.configuration.ConfigurationFactory;
 import com.subcherry.diff.Chunk;
 import com.subcherry.diff.Diff;
 import com.subcherry.diff.DiffParser;
 import com.subcherry.diff.Line;
+
+import de.haumacher.common.config.PropertiesUtil;
+import de.haumacher.common.config.Value;
 
 /**
  * Tool to find all dependencies of a ticket.
@@ -48,7 +50,7 @@ public class TicketDependencies {
 	
 	static final Logger LOG = Logger.getLogger(TicketDependencies.class.getName());
 	
-	public interface DependencyOptions {
+	public interface DependencyOptions extends Value {
 		String getPath();
 
 		long getPegRev();
@@ -69,8 +71,8 @@ public class TicketDependencies {
 		SVNClientManager svnClient = Main.newSVNClientManager();
 		SVNDiffClient diffClient = svnClient.getDiffClient();
 		
-		SVNConfig config = ConfigurationFactory.newConfiguration(SVNConfig.class, "conf/svnConfig.properties");
-		DependencyOptions options = ConfigurationFactory.newConfiguration(DependencyOptions.class, "conf/dependencyOptions.properties");
+		SVNConfig config = PropertiesUtil.load("conf/svnConfig.properties", SVNConfig.class);
+		DependencyOptions options = PropertiesUtil.load("conf/dependencyOptions.properties", DependencyOptions.class);
 	
 		SVNURL url = SVNURL.parseURIDecoded(config.getSvnURL() + options.getPath());
 		SVNRevision pegRev = SVNRevision.create(options.getPegRev());

@@ -2,14 +2,14 @@ package com.subcherry;
 
 import org.apache.commons.codec.binary.Base64;
 
-import com.subcherry.configuration.annotation.NoValueCaching;
-import com.subcherry.configuration.annotation.ValueParser;
-import com.subcherry.configuration.properties.Parser;
+import de.haumacher.common.config.Parser;
+import de.haumacher.common.config.Value;
+import de.haumacher.common.config.annotate.ValueParser;
 
 /**
  * @version   $Revision$  $Author$  $Date$
  */
-public interface LoginCredential {
+public interface LoginCredential extends Value {
 	
 	public static class PasswordDecoder implements Parser<String>{
 
@@ -23,7 +23,6 @@ public interface LoginCredential {
 	String getUser();
 	
 	@ValueParser(PasswordDecoder.class)
-	@NoValueCaching
 	String getPasswd();
 
 }

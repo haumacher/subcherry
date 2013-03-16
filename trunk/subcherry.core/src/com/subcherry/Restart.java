@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Properties;
 
-import com.subcherry.configuration.ConfigurationFactory;
+import de.haumacher.common.config.PropertiesUtil;
 
 /**
  * @version   $Revision$  $Author$  $Date$
@@ -19,12 +19,15 @@ public class Restart {
 	public static void setRevision(long revision) throws IOException {
 		Properties p = new Properties();
 		p.setProperty(REVISION_PROPERTY, Long.toString(revision));
-		ConfigurationFactory.storeProperties(p, FILE_NAME, "\n\tProperties are used by merge Tool to restart merge at stored revision.\n\tThe file is deleted after completing merge.\n\tDo not modify.\n\n\tDelete when configured revision should be used.\n");
+		PropertiesUtil.storeProperties(p, FILE_NAME, 
+				"\n\tProperties are used by merge Tool to restart merge at stored revision.\n"
+						+ "\tThe file is deleted after completing merge.\n"
+						+ "\tDo not modify.\n\n\tDelete when configured revision should be used.\n");
 	}
 	
 	public static long getRevision() {
 		try {
-			Properties properties = ConfigurationFactory.readProperties(FILE_NAME);
+			Properties properties = PropertiesUtil.loadProperties(FILE_NAME);
 			String nextRevision = properties.getProperty(REVISION_PROPERTY);
 			return Long.parseLong(nextRevision);
 		} catch (IOException ex) {

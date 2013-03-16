@@ -30,9 +30,11 @@ import com.subcherry.LoginCredential;
 import com.subcherry.Main;
 import com.subcherry.MergeCommitHandler;
 import com.subcherry.SVNConfig;
-import com.subcherry.configuration.ConfigurationFactory;
 import com.subcherry.trac.TracConnection;
 import com.subcherry.utils.Utils;
+
+import de.haumacher.common.config.PropertiesUtil;
+import de.haumacher.common.config.Value;
 
 /**
  * Tool to find ticket that have commits on a certain branch.
@@ -43,7 +45,7 @@ public class TicketsOnBranch {
 	
 	static final Logger LOG = Logger.getLogger(TicketsOnBranch.class.getName());
 	
-	public interface LogOptions {
+	public interface LogOptions extends Value {
 		String[] getExcludedTickets();
 		String getExcludedQuery();
 		String[] getAdditionalTickets();
@@ -66,8 +68,8 @@ public class TicketsOnBranch {
 		SVNClientManager svnClient = Main.newSVNClientManager();
 		SVNLogClient logClient = svnClient.getLogClient();
 		
-		SVNConfig config = ConfigurationFactory.newConfiguration(SVNConfig.class, "conf/svnConfig.properties");
-		LogOptions options = ConfigurationFactory.newConfiguration(LogOptions.class, "conf/logOptions.properties");
+		SVNConfig config = PropertiesUtil.load("conf/svnConfig.properties", SVNConfig.class);
+		LogOptions options = PropertiesUtil.load("conf/logOptions.properties", LogOptions.class);
 		
 		final Pattern ticketPattern = Pattern.compile(config.getTicketPattern());
 		final Pattern ignorePatternOpt = Utils.compileOptional(options.getIgnorePattern());
@@ -130,8 +132,8 @@ public class TicketsOnBranch {
 		Set<String> tickets = new HashSet<String>(handler.getTickets());
 		tickets.removeAll(Arrays.asList(options.getExcludedTickets()));
 		if (isNotEmpty(options.getExcludedQuery())) {
-			LoginCredential tracCredentials = ConfigurationFactory.newConfiguration(LoginCredential.class,
-					"conf/loginCredentials.properties", "trac");
+			LoginCredential tracCredentials = PropertiesUtil.load("conf/loginCredentials.properties", "trac.",
+					LoginCredential.class);
 			TracConnection trac = new TracConnection(config.getTracURL(), tracCredentials.getUser(), tracCredentials.getPasswd());
 			Vector<Integer> ids = trac.getTicket().query(options.getExcludedQuery());
 			tickets.removeAll(DefaultLogEntryMatcher.toStringIds(ids));

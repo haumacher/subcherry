@@ -15,11 +15,13 @@ import org.lustin.trac.xmlprc.Ticket;
 
 import com.subcherry.Configuration;
 import com.subcherry.LoginCredential;
-import com.subcherry.configuration.ConfigurationFactory;
 import com.subcherry.trac.TicketStub;
 import com.subcherry.trac.TracConnection;
 import com.subcherry.trac.TracTicket;
 import com.subcherry.utils.Utils;
+
+import de.haumacher.common.config.PropertiesUtil;
+import de.haumacher.common.config.Value;
 
 /**
  * Tool to check a set of tickets to include all their dependencies (dependson
@@ -31,7 +33,7 @@ public class TicketConsistency {
 
 	private static final Logger LOG = Logger.getLogger(TicketConsistency.class.getName());
 	
-	public interface Options {
+	public interface Options extends Value {
 
 		String getTicketQuery();
 		String getIgnoredQuery();
@@ -42,15 +44,13 @@ public class TicketConsistency {
 	private static Options options;
 	
 	public static void main(String[] args) throws IOException {
-		LoginCredential tracCredentials = 
-				ConfigurationFactory.newConfiguration(LoginCredential.class, "conf/loginCredentials.properties", "trac");
-		Configuration config = 
-				ConfigurationFactory.newConfiguration(Configuration.class, "conf/configuration.properties");
+		LoginCredential tracCredentials = PropertiesUtil.load("conf/loginCredentials.properties", "trac.",
+				LoginCredential.class);
+		Configuration config = PropertiesUtil.load("conf/configuration.properties", Configuration.class);
 		tracConnection = 
 				new TracConnection(config.getTracURL(), tracCredentials.getUser(), tracCredentials.getPasswd());
 		
-		options = 
-				ConfigurationFactory.newConfiguration(Options.class, "conf/ticketConsistency.properties");
+		options = PropertiesUtil.load("conf/ticketConsistency.properties", Options.class);
 
 		Ticket ticketQuery = tracConnection.getTicket();
 		Vector<Integer> tickets = ticketQuery.query(options.getTicketQuery());
