@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <psf version="2.0">
 <provider id="org.tigris.subversion.subclipse.core.svnnature">
+<project reference="0.9.3,https://svn.code.sf.net/p/timecollect/code/trunk/de.haumacher.common.config,de.haumacher.common.config"/>
+<project reference="0.9.3,https://svn.code.sf.net/p/timecollect/code/trunk/de.haumacher.common.util,de.haumacher.common.util"/>
+<project reference="0.9.3,https://subcherry.googlecode.com/svn/trunk/ext.org.apache.ws.commons,ext.org.apache.ws.commons"/>
+<project reference="0.9.3,https://subcherry.googlecode.com/svn/trunk/ext.org.apache.xmlrpc,ext.org.apache.xmlrpc"/>
+<project reference="0.9.3,https://subcherry.googlecode.com/svn/trunk/ext.org.lustin.trac,ext.org.lustin.trac"/>
 <project reference="0.9.3,https://subcherry.googlecode.com/svn/trunk/ext.org.tmatesoft.svn,ext.org.tmatesoft.svn"/>
-<project reference="0.9.3,https://wtk.svn.sourceforge.net/svnroot/wtk/trunk/net.sf.wtk.ant.dependencies,net.sf.wtk.ant.dependencies"/>
-<project reference="0.9.3,https://wtk.svn.sourceforge.net/svnroot/wtk/trunk/net.sf.wtk.ant.namespaces,net.sf.wtk.ant.namespaces"/>
+<project reference="0.9.3,https://subcherry.googlecode.com/svn/trunk/subcherry.core,subcherry.core"/>
 </provider>
 </psf>
