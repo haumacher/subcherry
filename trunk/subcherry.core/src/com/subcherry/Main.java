@@ -1,5 +1,7 @@
 package com.subcherry;
 
+import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.util.Arrays;
@@ -72,6 +74,7 @@ public class Main {
 		} else {
 			_modules = new HashSet<String>(Arrays.asList(_config.getModules()));
 		}
+		_modules.retainAll(getWorkspaceModules());
 		Log.info("Merging modules: " + _modules);
 		
 		SVNLogEntryMatcher logEntryMatcher = newLogEntryMatcher(tracCredentials);
@@ -92,6 +95,20 @@ public class Main {
 		mergeCommitHandler.run();
 
 		Restart.clear();
+	}
+
+	private static Set<String> getWorkspaceModules() {
+		File[] workspaceModuleDirs = _config.getWorkspaceRoot().listFiles(new FileFilter() {
+			@Override
+			public boolean accept(File file) {
+				return file.isDirectory() && !file.getName().startsWith(".");
+			}
+		});
+		Set<String> workspaceModules = new HashSet<String>();
+		for (File moduleDir : workspaceModuleDirs) {
+			workspaceModules.add(moduleDir.getName());
+		}
+		return workspaceModules;
 	}
 
 	public static SVNRevision getStartRevision() {
