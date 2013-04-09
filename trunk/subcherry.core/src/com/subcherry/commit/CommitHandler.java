@@ -12,6 +12,7 @@ import org.tmatesoft.svn.core.SVNLogEntry;
 import com.subcherry.Configuration;
 import com.subcherry.merge.Handler;
 import com.subcherry.utils.ArrayUtil;
+import com.subcherry.utils.Log;
 import com.subcherry.utils.Utils;
 
 /**
@@ -46,6 +47,8 @@ public class CommitHandler extends Handler {
 			String moduleName = getModuleName(moduleNameIndex, path);
 			if (_modules.contains(moduleName)) {
 				files.add(new File(workspaceRoot, moduleName));
+			} else {
+				Log.warning("Skipping change in module '" + moduleName + "': " + path);
 			}
 		}
 		return files;
