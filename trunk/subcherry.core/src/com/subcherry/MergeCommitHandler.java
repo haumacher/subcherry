@@ -147,7 +147,10 @@ public class MergeCommitHandler {
 					List<File> changedPaths = new ArrayList<File>(Arrays.asList(commit.affectedPaths));
 					boolean removed = changedPaths.remove(new File(excludedPath));
 					if (!removed) {
-						System.err.println("No in pathes being committed: " + excludedPath);
+						System.err.println("Not in pathes being committed '" + excludedPath + ":");
+						for (File path : changedPaths) {
+							System.err.println("   " + path.getPath());
+						}
 					} else {
 						commit.affectedPaths = changedPaths.toArray(new File[changedPaths.size()]);
 					}
