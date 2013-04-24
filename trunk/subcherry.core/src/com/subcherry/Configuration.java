@@ -13,6 +13,11 @@ public interface Configuration extends Value {
 	
 	long getEndRevision();
 
+	/**
+	 * Revision at which the source branch is found for listing relevant changes.
+	 */
+	long getPegRevision();
+
 	String[] getModules();
 
 	String getSourceBranch();

@@ -60,7 +60,7 @@ public class Main {
 	public static void doMerge(LoginCredential tracCredentials) throws SVNException, IOException {
 		SVNRevision startRevision = _config.getRevert() ? getEndRevision() : getStartRevision();
 		SVNRevision endRevision = _config.getRevert() ? getStartRevision() : getEndRevision();
-		SVNRevision pegRevision = endRevision;
+		SVNRevision pegRevision = getPegRevision(startRevision);
 		boolean stopOnCopy = false;
 		boolean discoverChangedPaths = true;
 		long limit = NO_LIMIT;
@@ -95,6 +95,10 @@ public class Main {
 		mergeCommitHandler.run();
 
 		Restart.clear();
+	}
+
+	private static SVNRevision getPegRevision(SVNRevision startRevision) {
+		return getRevisionOrHead(_config.getPegRevision());
 	}
 
 	private static Set<String> getWorkspaceModules() {
