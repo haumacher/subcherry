@@ -7,5 +7,6 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/ext.org.tmatesoft.svn"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/ext.org.apache.ws.commons"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/de.haumacher.common.config"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/3"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

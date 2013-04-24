@@ -87,22 +87,17 @@ public class CommitHandler extends Handler {
 		if (BACKPORT.equals(_config.getPortMessage())) {
 			return backPortMessage(logEntryMessage); 
 		}
-		Matcher matcher = Utils.TICKET_PATTERN.matcher(logEntryMessage);
-		if (!matcher.matches()) {
-			throw new IllegalArgumentException("Message " + logEntryMessage  + " has illegal format."); 
-		}
-		String ticketNumber = Utils.getTicketNumber(matcher);
-		String apiChange = Utils.getApiChange(matcher);
-		String originalMessage = Utils.getOriginalMessage(matcher);
+		
+		Utils.TicketMessage message = new Utils.TicketMessage(logEntryMessage);
 
 		StringBuilder newMesssage = new StringBuilder();
 		newMesssage.append("Ticket #");
-		newMesssage.append(ticketNumber);
+		newMesssage.append(message.ticketNumber);
 		newMesssage.append(":");
 		
 		if (_config.getPortHotfixes()) {
-			if (Utils.isHotfix(matcher) && Utils.getHotfixBranch(matcher).equals(getBranchName(_config.getSourceBranch()))) {
-				newMesssage.append(originalMessage);
+			if (Utils.isHotfix(message.matcher) && Utils.getHotfixBranch(message.matcher).equals(getBranchName(_config.getSourceBranch()))) {
+				newMesssage.append(message.originalMessage);
 				return newMesssage.toString();
 			}
 		}
@@ -123,8 +118,8 @@ public class CommitHandler extends Handler {
 			}
 		}
 
-		if (apiChange != null) {
-			newMesssage.append(apiChange);
+		if (message.apiChange != null) {
+			newMesssage.append(message.apiChange);
 		}
 		
 		newMesssage.append(" ");
@@ -135,7 +130,7 @@ public class CommitHandler extends Handler {
 		newMesssage.append(logEntry.getRevision());
 		newMesssage.append("]:");
 		
-		newMesssage.append(originalMessage);
+		newMesssage.append(message.originalMessage);
 		return newMesssage.toString();
 	}
 
