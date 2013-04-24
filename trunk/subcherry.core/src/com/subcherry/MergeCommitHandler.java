@@ -73,6 +73,10 @@ public class MergeCommitHandler {
 	
 	public void merge(Commit commit, SVNLogEntry logEntry) throws SVNException {
 		Merge merge = _mergeHandler.parseMerge(logEntry);
+		if (merge.changedModules.size() == 0) {
+			Log.info("Skipping '" + merge.revision + "' (no relevant modules touched).");
+			return;
+		}
 		
 		boolean commitAproval = false;
 		
