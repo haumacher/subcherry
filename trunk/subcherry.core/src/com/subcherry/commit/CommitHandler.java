@@ -48,7 +48,7 @@ public class CommitHandler extends Handler {
 			if (_modules.contains(moduleName)) {
 				files.add(new File(workspaceRoot, moduleName));
 			} else {
-				Log.warning("Skipping change in module '" + moduleName + "': " + path);
+				Log.warning("Skipping change in module '" + moduleName + "' (not in relevant modules '" + _modules + "'): " + path);
 			}
 		}
 		return files;
