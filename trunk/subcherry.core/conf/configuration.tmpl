@@ -7,9 +7,15 @@ autoCommit: true;
 # the first revision to patch
 startRevision: 1
 
+# The revision in which to resolve the source branch 
+# (e.g. relevant if the source branch does no longer existin in the HEAD revsion).
+pegRevision: 0
+
 # the revision where the merge ends, or 0 for HEAD.
 endRevision: 0
 
+# Whether to automatically detect the modules to merge (from the source branch 
+# at pegRevision and the target workspace).
 detectCommonModules: true
 
 # Modules for which changes must be patched. If not given, all modules on the source branch are used.
