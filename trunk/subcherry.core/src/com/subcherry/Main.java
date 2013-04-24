@@ -70,7 +70,7 @@ public class Main {
 		SVNURL sourceBranchUrl = SVNURL.parseURIDecoded(_config.getSvnURL() + Utils.SVN_SERVER_PATH_SEPARATOR + _config.getSourceBranch());
 		SVNURL targetBranchUrl = SVNURL.parseURIDecoded(_config.getSvnURL() + Utils.SVN_SERVER_PATH_SEPARATOR + _config.getTargetBranch());
 		if (_config.getDetectCommonModules() || _config.getModules().length == 0) {
-			_modules = DirCollector.getCommonBranchModules(logClient, _config.getModules(), sourceBranchUrl, targetBranchUrl, pegRevision);
+			_modules = DirCollector.getBranchModules(logClient, _config.getModules(), sourceBranchUrl, pegRevision);
 		} else {
 			_modules = new HashSet<String>(Arrays.asList(_config.getModules()));
 		}
@@ -81,7 +81,7 @@ public class Main {
 		CommitHandler commitHandler = newCommitHndler();
 		MergeHandler mergeHandler = new MergeHandler(_config, _modules);
 		SVNURL url = SVNURL.parseURIDecoded(_config.getSvnURL());
-		String[] paths = getPaths(_config);
+		String[] paths = {_config.getSourceBranch()};
 
 		logClient.doLog(url, paths, pegRevision, startRevision, endRevision, stopOnCopy, discoverChangedPaths, limit,
 				logEntryMatcher);
