@@ -78,7 +78,7 @@ public class Main {
 		Log.info("Merging modules: " + _modules);
 		
 		SVNLogEntryMatcher logEntryMatcher = newLogEntryMatcher(tracCredentials);
-		CommitHandler commitHandler = newCommitHndler();
+		CommitHandler commitHandler = newCommitHandler();
 		MergeHandler mergeHandler = new MergeHandler(_config, _modules);
 		SVNURL url = SVNURL.parseURIDecoded(_config.getSvnURL());
 		String[] paths = {_config.getSourceBranch()};
@@ -141,7 +141,7 @@ public class Main {
 		return logEntryMatcher;
 	}
 
-	private static CommitHandler newCommitHndler() {
+	private static CommitHandler newCommitHandler() {
 		return new CommitHandler(_config, _modules);
 	}
 
