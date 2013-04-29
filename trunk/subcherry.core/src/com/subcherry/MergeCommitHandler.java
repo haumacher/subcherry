@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -81,7 +83,7 @@ public class MergeCommitHandler {
 		boolean commitAproval = false;
 		
 		System.out.println("Revision " + logEntry.getRevision() + ": " + encode(logEntry.getMessage()));
-		List<SVNConflictDescription> conflicts = merge.run(_mergeContext);
+		Map<File, List<SVNConflictDescription>> conflicts = merge.run(_mergeContext);
 		if (conflicts != Merge.NO_CONFLICTS) {
 			log(conflicts);
 			boolean skip = queryCommit(commit, "commit");
@@ -232,11 +234,30 @@ public class MergeCommitHandler {
 		return s.replace("\\n", "\n").replace("\\r", "\r");
 	}
 	
-	public void log(List<SVNConflictDescription> conflicts) {
+	public void log(Map<File, List<SVNConflictDescription>> conflicts) {
 		StringBuilder message = new StringBuilder("Merge has conflicts in files:");
-		for (int index = 0, size = conflicts.size(); index < size; index++) {
+		for (Entry<File, List<SVNConflictDescription>> entry : conflicts.entrySet()) {
 			message.append('\n');
-			message.append(conflicts.get(index).getPath().getAbsolutePath());
+			message.append(entry.getKey().getAbsolutePath());
+			message.append(':').append(' ');
+			boolean first = true;
+			for (SVNConflictDescription conflict : entry.getValue()) {
+				if (first) {
+					first = false;
+				} else {
+					message.append(',');
+				}
+				if (conflict.isPropertyConflict()) {
+					message.append("property");
+				}
+				if (conflict.isTextConflict()) {
+					message.append("text");
+				}
+				if (conflict.isTreeConflict()) {
+					message.append("tree");
+				}
+			}
+
 		}
 		System.out.println(message.toString());
 	}

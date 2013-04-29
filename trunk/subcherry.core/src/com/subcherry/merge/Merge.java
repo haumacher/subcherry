@@ -1,36 +1,38 @@
 package com.subcherry.merge;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
+import org.tmatesoft.svn.core.SVNCancelException;
 import org.tmatesoft.svn.core.SVNException;
 import org.tmatesoft.svn.core.SVNURL;
-import org.tmatesoft.svn.core.internal.wc.DefaultSVNOptions;
-import org.tmatesoft.svn.core.internal.wc2.compat.SvnCodec;
-import org.tmatesoft.svn.core.wc.ISVNConflictHandler;
-import org.tmatesoft.svn.core.wc.ISVNOptions;
-import org.tmatesoft.svn.core.wc.SVNConflictChoice;
+import org.tmatesoft.svn.core.internal.wc17.db.ISVNWCDb;
+import org.tmatesoft.svn.core.wc.ISVNEventHandler;
 import org.tmatesoft.svn.core.wc.SVNConflictDescription;
-import org.tmatesoft.svn.core.wc.SVNConflictResult;
 import org.tmatesoft.svn.core.wc.SVNDiffClient;
 import org.tmatesoft.svn.core.wc.SVNDiffOptions;
+import org.tmatesoft.svn.core.wc.SVNEvent;
 import org.tmatesoft.svn.core.wc.SVNRevision;
 import org.tmatesoft.svn.core.wc.SVNRevisionRange;
+import org.tmatesoft.svn.core.wc2.ISvnOperationHandler;
 import org.tmatesoft.svn.core.wc2.SvnMerge;
+import org.tmatesoft.svn.core.wc2.SvnOperation;
 import org.tmatesoft.svn.core.wc2.SvnOperationFactory;
+import org.tmatesoft.svn.core.wc2.SvnRevisionRange;
 import org.tmatesoft.svn.core.wc2.SvnTarget;
-
-import com.subcherry.utils.Log;
 
 /**
  * @version    $Revision$  $Author$  $Date$
  */
 public class Merge {
 	
-	public static final List<SVNConflictDescription> NO_CONFLICTS = Collections.emptyList();
+	public static final Map<File, List<SVNConflictDescription>> NO_CONFLICTS = Collections.emptyMap();
 	
 	public long revision;
 	public Collection<SVNModule> changedModules;
@@ -43,28 +45,28 @@ public class Merge {
 		this.revert = revert;
 	}
 
-	public List<SVNConflictDescription> run(MergeContext context) throws SVNException {
+	public Map<File, List<SVNConflictDescription>> run(MergeContext context) throws SVNException {
 		File workspaceRoot = context.config.getWorkspaceRoot();
 		
-		List<SVNConflictDescription> allConflicts = NO_CONFLICTS;
+		Map<File, List<SVNConflictDescription>> allConflicts = NO_CONFLICTS;
 		
 		for (SVNModule module : this.changedModules) {
 			SVNURL startURL = module.getURL();
 			File dstPath = new File(workspaceRoot, module.getName());
 
-			List<SVNConflictDescription> moduleConflicts = doMerge(context.diffClient, startURL, dstPath);
+			Map<File, List<SVNConflictDescription>> moduleConflicts = doMerge(context.diffClient, startURL, dstPath);
 			if (moduleConflicts != NO_CONFLICTS) {
 				if (allConflicts == NO_CONFLICTS) {
 					allConflicts = moduleConflicts;
 				} else {
-					allConflicts.addAll(moduleConflicts);
+					allConflicts.putAll(moduleConflicts);
 				}
 			}
 		}
 		return allConflicts;
 	}
 	
-	List<SVNConflictDescription> doMerge(SVNDiffClient diffClient, SVNURL url, File dstPath) throws SVNException {
+	Map<File, List<SVNConflictDescription>> doMerge(SVNDiffClient diffClient, SVNURL url, File dstPath) throws SVNException {
 		SvnOperationFactory operationsFactory = diffClient.getOperationsFactory();
 		SvnMerge merge = operationsFactory.createMerge();
 		SVNRevision startRevision = SVNRevision.create(revert ? revision : revision - 1);
@@ -84,45 +86,102 @@ public class Merge {
 		SvnTarget source = SvnTarget.fromURL(url, startRevision);
 		merge.setSource(source, false);
 		SVNRevisionRange range = new SVNRevisionRange(startRevision, endRevision);
-		merge.addRevisionRange(SvnCodec.revisionRange(range));
+		merge.addRevisionRange(SvnRevisionRange.create(range.getStartRevision(), range.getEndRevision()));
 		
 		merge.setIgnoreAncestry(revert);
 		
 		System.out.println("svn merge " + (revert ? "--ignore-ancestry ": "") + "-r" + range.getStartRevision() + ":" + range.getEndRevision() + " " + source + " " + target.getFile());
 		
-		ISVNOptions options = merge.getOptions();
-		if (options instanceof DefaultSVNOptions) {
-			final ISVNConflictHandler conflictResolver = options.getConflictResolver();
-			final ArrayList<SVNConflictDescription> mergeConflicts = new ArrayList<SVNConflictDescription>();
+		Set<File> touchedFiles = new HashSet<File>();
+		ISVNEventHandler formerHandler = installFileCollectHandler(merge, touchedFiles);
+		try {
+			Map<File, List<SVNConflictDescription>> mergeConflicts= new HashMap<File, List<SVNConflictDescription>>();
+			ISvnOperationHandler formerOperationHandler = installOperationHandler(merge, mergeConflicts, touchedFiles);
 			try {
-				((DefaultSVNOptions) options).setConflictHandler(new ISVNConflictHandler() {
-
-					@Override
-					public SVNConflictResult handleConflict(SVNConflictDescription conflictDescription)
-							throws SVNException {
-						SVNConflictResult result;
-						if (conflictResolver == null) {
-							result = new SVNConflictResult(SVNConflictChoice.POSTPONE, null);
-						} else {
-							result = conflictResolver.handleConflict(conflictDescription);
-						}
-						mergeConflicts.add(conflictDescription);
-						return result;
-					}
-				});
 				merge.run();
 				return checkConflicts(mergeConflicts);
 			} finally {
-				((DefaultSVNOptions) options).setConflictHandler(conflictResolver);
+				restoreOperationHandler(merge, formerOperationHandler);
 			}
-		} else {
-			Log.info("No chance to resolve conflicts");
-			merge.run();
-			return NO_CONFLICTS;
+		} finally {
+			restoreFormerHandler(merge, formerHandler);
 		}
 	}
 
-	private List<SVNConflictDescription> checkConflicts(List<SVNConflictDescription> mergeConflicts) {
+	private static void restoreOperationHandler(SvnMerge merge, ISvnOperationHandler formerHandler) {
+		SvnOperationFactory operationFactory = merge.getOperationFactory();
+		operationFactory.setOperationHandler(formerHandler);
+	}
+
+	private static ISvnOperationHandler installOperationHandler(SvnMerge merge,
+			final Map<File, List<SVNConflictDescription>> mergeConflicts, final Iterable<File> touchedFiles) {
+		SvnOperationFactory operationFactory = merge.getOperationFactory();
+		final ISvnOperationHandler formerHandler = operationFactory.getOperationHandler();
+		operationFactory.setOperationHandler(new ISvnOperationHandler() {
+			
+			@Override
+			public void beforeOperation(SvnOperation<?> operation) throws SVNException {
+				if (formerHandler != null) {
+					formerHandler.beforeOperation(operation);
+				}
+			}
+			
+			@Override
+			public void afterOperationSuccess(SvnOperation<?> operation) throws SVNException {
+				if (formerHandler != null) {
+					formerHandler.afterOperationSuccess(operation);
+				}
+				ISVNWCDb wcDb = operation.getOperationFactory().getWcContext().getDb();
+				for (File f : touchedFiles) {
+					List<SVNConflictDescription> conflicts = wcDb.readConflicts(f);
+					if (!conflicts.isEmpty()) {
+						mergeConflicts.put(f, conflicts);
+					}
+				}
+			}
+			
+			@Override
+			public void afterOperationFailure(SvnOperation<?> operation) {
+				if (formerHandler != null) {
+					formerHandler.afterOperationFailure(operation);
+				}
+			}
+
+		});
+		return formerHandler;
+	}
+
+	private static void restoreFormerHandler(SvnMerge merge, ISVNEventHandler formerHandler) {
+		SvnOperationFactory operationFactory = merge.getOperationFactory();
+		operationFactory.setEventHandler(formerHandler);
+	}
+
+	private static ISVNEventHandler installFileCollectHandler(SvnMerge merge, final Set<File> touchedFiles) {
+		SvnOperationFactory operationFactory = merge.getOperationFactory();
+		final ISVNEventHandler formerEventHandler = operationFactory.getEventHandler();
+		operationFactory.setEventHandler(new ISVNEventHandler() {
+			
+			@Override
+			public void checkCancelled() throws SVNCancelException {
+				if (formerEventHandler != null) {
+					formerEventHandler.checkCancelled();
+				}
+				// not canceled by any button or so.
+			}
+			
+			@Override
+			public void handleEvent(SVNEvent event, double progress)
+					throws SVNException {
+				if (formerEventHandler != null) {
+					formerEventHandler.handleEvent(event, progress);
+				}
+				touchedFiles.add(event.getFile());
+			}
+		});
+		return formerEventHandler;
+	}
+
+	private Map<File, List<SVNConflictDescription>> checkConflicts(Map<File, List<SVNConflictDescription>> mergeConflicts) {
 		if (mergeConflicts.isEmpty()) {
 			return NO_CONFLICTS;
 		} else {
