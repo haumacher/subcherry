@@ -1,0 +1,15 @@
+#
+# Trac query that selects the tickets to check for consistency.
+#
+ticketQuery: milestone=TL_5.7.3_x&max=999
+
+#
+# Query that matches tickets that should no be reported as dependencies.
+#
+ignoredQuery: milestone=TL_5.7.3_x&status=closed&status=testing&max=999
+
+#
+# Regular expression that matches milestones of dependencies to be ignored.
+#
+ignoredMilestonePattern: (?:TL_5.7.[012]_\\d+)|(?:TL_5.7.[012])|(Administratives)
+

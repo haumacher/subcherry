@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Test bundle for de.haumacher.common.config
+Bundle-SymbolicName: test.de.haumacher.common.config
+Bundle-Version: 1.0.0
+Bundle-Vendor: haumacher.de
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Require-Bundle: org.junit;bundle-version="3.8.2",
+ de.haumacher.common.config;bundle-version="1.0.0"
