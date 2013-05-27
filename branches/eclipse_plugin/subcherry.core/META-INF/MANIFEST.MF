@@ -1,0 +1,16 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Subcherry core module
+Bundle-SymbolicName: subcherry.core
+Bundle-Version: 1.0.0
+Export-Package: com.subcherry,
+ com.subcherry.commit,
+ com.subcherry.dependency,
+ com.subcherry.diff,
+ com.subcherry.log,
+ com.subcherry.merge,
+ com.subcherry.ticketcheck,
+ com.subcherry.trac,
+ com.subcherry.utils
+Require-Bundle: org.tmatesoft.svnkit;bundle-version="1.7.8"
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
