@@ -20,6 +20,7 @@ import com.subcherry.utils.Utils;
  */
 public class CommitHandler extends Handler {
 	
+	private static final String TRUNK = "trunk";
 	private static final String ORIGINAL = "{original}";
 	private static final String BACKPORT = "{Backport}";
 	
@@ -141,15 +142,33 @@ public class CommitHandler extends Handler {
 		if (!matcher.matches()) {
 			throw new IllegalStateException();
 		}
-		return "Ticket #" + matcher.group(1) + ": " + matcher.group(2);
+		String ticketNumber = matcher.group(1);
+		String originalMessage = matcher.group(2);
+		
+		StringBuilder backportMessage = new StringBuilder("Ticket #");
+		backportMessage.append(ticketNumber);
+		backportMessage.append(": ");
+		
+		String targetBranch = getBranchName(_config.getTargetBranch());
+		if (!isTrunk(targetBranch)) {
+			backportMessage.append("On ");
+			backportMessage.append(targetBranch);
+			backportMessage.append(": ");
+		}
+		backportMessage.append(originalMessage);
+		return backportMessage.toString();
+	}
+
+	private boolean isTrunk(String branchName) {
+		return branchName.endsWith(TRUNK);
 	}
 
 	private String getBranchName(String branch) {
-		Pattern trunkPattern = Pattern.compile("^/?(trunk)(?:/([^/]+))$");
+		Pattern trunkPattern = Pattern.compile("^/?(" + TRUNK +")(?:/([^/]+))$");
 		Matcher trunkMatcher = trunkPattern.matcher(branch);
 		if (trunkMatcher.matches()) {
 			String category = trunkMatcher.group(2);
-			return (category != null ? category + "_" : "") + trunkMatcher.group(1);
+			return (category != null ? category + "_" : "") + TRUNK;
 		}
 		int index = branch.lastIndexOf(Utils.SVN_SERVER_PATH_SEPARATOR);
 		if (index == -1) {
