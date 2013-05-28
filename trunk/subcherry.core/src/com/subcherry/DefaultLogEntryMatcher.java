@@ -28,6 +28,7 @@ public class DefaultLogEntryMatcher extends SVNLogEntryMatcher {
 	private Set<Long> _ignoreRevisions;
 	private Set<Long> _additionalRevisions;
 	private Set<String> _additionalTickets;
+	private Set<String> _ignoreTickets;
 	private Collection<String> _milestones;
 
 	public DefaultLogEntryMatcher(LoginCredential tracCredentials, Configuration config) throws MalformedURLException {
@@ -36,6 +37,7 @@ public class DefaultLogEntryMatcher extends SVNLogEntryMatcher {
 		_ignoreRevisions = getIgnoreRevisions(config);
 		_additionalRevisions = getAdditionalRevisions(config);
 		_additionalTickets = getAdditionalTickets(config);
+		_ignoreTickets = getIgnoreTickets(config);
 		_milestones = getMilestones(config);
 		
 		_additionalTickets.addAll(getQueryTickets(config));
@@ -65,34 +67,34 @@ public class DefaultLogEntryMatcher extends SVNLogEntryMatcher {
 	}
 
 	private Set<String> getAdditionalTickets(Configuration config) {
-		Set<String> revisions = new HashSet<String>();
-		String[] configuredTickets = config.getAdditionalTickets();
-		Collections.addAll(revisions, configuredTickets);
-		return revisions;
+		return toSet(config.getAdditionalTickets());
+	}
+
+	private Set<String> getIgnoreTickets(Configuration config) {
+		return toSet(config.getIgnoreTickets());
 	}
 
 	private Set<Long> getAdditionalRevisions(Configuration config) {
-		Set<Long> revisions = new HashSet<Long>();
-		Long[] configuredRevisions = config.getAdditionalRevisions();
-		Collections.addAll(revisions, configuredRevisions);
-		return revisions;
+		return toSet(config.getAdditionalRevisions());
 	}
 
 	private Collection<String> getMilestones(Configuration config) {
-		Set<String> milestones = new HashSet<String>();
+		Set<String> milestones = toSet(config.getMilestones());
 		String targetMilestone = config.getTargetMilestone();
 		if (targetMilestone != null) {
 			milestones.add(targetMilestone);
 		}
-		Collections.addAll(milestones, config.getMilestones());
 		return milestones;
 	}
 
 	private static Set<Long> getIgnoreRevisions(Configuration config) {
-		Set<Long> revisions = new HashSet<Long>();
-		Long[] configuredRevisions = config.getIgnoreRevisions();
-		Collections.addAll(revisions, configuredRevisions);
-		return revisions;
+		return toSet(config.getIgnoreRevisions());
+	}
+
+	private static <T> Set<T> toSet(T[] array) {
+		Set<T> set = new HashSet<T>();
+		Collections.addAll(set, array);
+		return set;
 	}
 
 
@@ -122,6 +124,9 @@ public class DefaultLogEntryMatcher extends SVNLogEntryMatcher {
 	private boolean portByTicket(Ticket ticket) {
 		if (_additionalTickets.contains(ticket.id())) {
 			return true;
+		}
+		if (_ignoreTickets.contains(ticket.id())) {
+			return false;
 		}
 		
 		if (!_milestones.isEmpty()) {

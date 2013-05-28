@@ -40,6 +40,8 @@ public interface Configuration extends Value {
 
 	Long[] getIgnoreRevisions();
 
+	String[] getIgnoreTickets();
+
 	String getTargetMilestone();
 
 	String[] getMilestones();
