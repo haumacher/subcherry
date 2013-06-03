@@ -30,7 +30,7 @@ public interface Configuration extends Value {
 	
 	boolean getRevert();
 	
-	boolean getPortHotfixes();
+	boolean getRebase();
 
 	String getTracURL();
 	

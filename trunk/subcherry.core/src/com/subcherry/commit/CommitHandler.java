@@ -94,36 +94,30 @@ public class CommitHandler extends Handler {
 		StringBuilder newMesssage = new StringBuilder();
 		newMesssage.append("Ticket #");
 		newMesssage.append(message.ticketNumber);
-		newMesssage.append(":");
-		
-		if (_config.getPortHotfixes()) {
-			if (Utils.isHotfix(message.matcher) && Utils.getHotfixBranch(message.matcher).equals(getBranchName(_config.getSourceBranch()))) {
-				newMesssage.append(message.originalMessage);
-				return newMesssage.toString();
+		newMesssage.append(": ");
+
+		if (_config.getRebase()) {
+			if (message.isHotfix()) {
+				addHotfix(newMesssage);
+			} else if (message.isPreview()) {
+				addPreview(newMesssage);
+			} else if (message.isPort()) {
+				addPort(newMesssage);
 			}
 		}
-		
-		newMesssage.append(" ");
-
-		if (_config.getPreview()) {
-			newMesssage.append("Preview on ");
-			newMesssage.append(getBranchName(_config.getTargetBranch()));
-			newMesssage.append(":");
-		} else {
+		else if (_config.getPreview()) {
+			addPreview(newMesssage);
+		} 
+		else {
 			if (!_config.getRevert()) {
-				newMesssage.append("Ported to ");
-				newMesssage.append(getBranchName(_config.getTargetBranch()));
-				newMesssage.append(" from ");
-				newMesssage.append(getBranchName(_config.getSourceBranch()));
-				newMesssage.append(":");
+				addPort(newMesssage);
 			}
 		}
 
 		if (message.apiChange != null) {
-			newMesssage.append(message.apiChange);
+			newMesssage.append("API change: ");
 		}
 		
-		newMesssage.append(" ");
 		if (_config.getRevert()) {
 			newMesssage.append("Reverted ");
 		}
@@ -133,6 +127,26 @@ public class CommitHandler extends Handler {
 		
 		newMesssage.append(message.originalMessage);
 		return newMesssage.toString();
+	}
+
+	private void addHotfix(StringBuilder newMesssage) {
+		newMesssage.append("Hotfix for ");
+		newMesssage.append(getBranchName(_config.getTargetBranch()));
+		newMesssage.append(": ");
+	}
+
+	private void addPort(StringBuilder newMesssage) {
+		newMesssage.append("Ported to ");
+		newMesssage.append(getBranchName(_config.getTargetBranch()));
+		newMesssage.append(" from ");
+		newMesssage.append(getBranchName(_config.getSourceBranch()));
+		newMesssage.append(": ");
+	}
+
+	private void addPreview(StringBuilder newMesssage) {
+		newMesssage.append("Preview on ");
+		newMesssage.append(getBranchName(_config.getTargetBranch()));
+		newMesssage.append(": ");
 	}
 
 	private String backPortMessage(String logEntryMessage) {

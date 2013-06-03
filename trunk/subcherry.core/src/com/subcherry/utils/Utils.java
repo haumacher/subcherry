@@ -29,6 +29,18 @@ public class Utils {
 			apiChange = getApiChange(matcher);
 			originalMessage = getOriginalMessage(matcher);
 		}
+
+		public boolean isHotfix() {
+			return matcher.group(Utils.IS_HOTFIX_GROUP) != null;
+		}
+		
+		public boolean isPreview() {
+			return matcher.group(Utils.PREVIEW_BRANCH_GROUP) != null;
+		}
+		
+		public boolean isPort() {
+			return matcher.group(Utils.PORTED_FROM_GROUP) != null;
+		}
 	}
 
 	private static int group = 1;
@@ -111,13 +123,6 @@ public class Utils {
 	 */
 	public static String getApiChange(Matcher matcher) {
 		return matcher.group(API_CHANGE_GROUP);
-	}
-	
-	/** 
-	 * @param matcher A {@link Matcher} matching {@link #TICKET_PATTERN}
-	 */
-	public static boolean isHotfix(Matcher matcher) {
-		return matcher.group(IS_HOTFIX_GROUP) != null;
 	}
 	
 	/** 
