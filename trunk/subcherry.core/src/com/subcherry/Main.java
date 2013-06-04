@@ -102,7 +102,14 @@ public class Main {
 	}
 
 	private static Set<String> getWorkspaceModules() {
-		File[] workspaceModuleDirs = _config.getWorkspaceRoot().listFiles(new FileFilter() {
+		File workspaceRoot = _config.getWorkspaceRoot();
+		if (!workspaceRoot.exists()) {
+			throw new RuntimeException("Workspace root '" + workspaceRoot.getAbsolutePath() + "' does not exist.");
+		}
+		if (!workspaceRoot.isDirectory()) {
+			throw new RuntimeException("Workspace root '" + workspaceRoot.getAbsolutePath() + "' is not a directory.");
+		}
+		File[] workspaceModuleDirs = workspaceRoot.listFiles(new FileFilter() {
 			@Override
 			public boolean accept(File file) {
 				return file.isDirectory() && !file.getName().startsWith(".");
