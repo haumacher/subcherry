@@ -101,6 +101,8 @@ public class CommitHandler extends Handler {
 				addHotfix(newMesssage);
 			} else if (message.isPreview()) {
 				addPreview(newMesssage);
+			} else if (message.isBranchChange()) {
+				addBranchChange(newMesssage);
 			} else if (message.isPort()) {
 				addPort(newMesssage);
 			}
@@ -145,6 +147,12 @@ public class CommitHandler extends Handler {
 
 	private void addPreview(StringBuilder newMesssage) {
 		newMesssage.append("Preview on ");
+		newMesssage.append(getBranchName(_config.getTargetBranch()));
+		newMesssage.append(": ");
+	}
+
+	private void addBranchChange(StringBuilder newMesssage) {
+		newMesssage.append("On ");
 		newMesssage.append(getBranchName(_config.getTargetBranch()));
 		newMesssage.append(": ");
 	}

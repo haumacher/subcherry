@@ -38,6 +38,10 @@ public class Utils {
 			return matcher.group(Utils.PREVIEW_BRANCH_GROUP) != null;
 		}
 		
+		public boolean isBranchChange() {
+			return matcher.group(Utils.ON_BRANCH_GROUP) != null;
+		}
+
 		public boolean isPort() {
 			return matcher.group(Utils.PORTED_FROM_GROUP) != null;
 		}
@@ -51,6 +55,8 @@ public class Utils {
 	private static int API_CHANGE_GROUP;
 	private static int TICKET_NUMBER_GROUP;
 	private static int PREVIEW_BRANCH_GROUP;
+
+	private static int ON_BRANCH_GROUP;
 	private static int PORTED_FROM_GROUP;
 	private static int PORTED_TO_GROUP;
 	
@@ -88,13 +94,17 @@ public class Utils {
 		return "Ticket #" + group(TICKET_NUMBER_GROUP = group, "\\d+") + ":";
 	}
 	private static String fromPrefix() {
-		return messagePart(or(hotfix(), preview(), ported()));
+		return messagePart(or(hotfix(), preview(), ported(), onBranch()));
 	}
 	private static String hotfix() {
 		return group(IS_HOTFIX_GROUP = group, "Hotfix for " + group(HOTFIX_BRANCH_GROUP = group, "[^:]*"));
 	}
 	private static String preview() {
 		return "Preview on " + group(PREVIEW_BRANCH_GROUP = group, "[^:]*");
+	}
+
+	private static String onBranch() {
+		return "On " + group(ON_BRANCH_GROUP = group, "[^:]*");
 	}
 	private static String ported() {
 		return "Ported to " + group(PORTED_TO_GROUP = group, "[^ ]*") + " from " + group(PORTED_FROM_GROUP = group, "[^:]*");
