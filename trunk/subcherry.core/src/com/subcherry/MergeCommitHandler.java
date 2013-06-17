@@ -40,10 +40,15 @@ public class MergeCommitHandler {
 	private final boolean _autoCommit;
 	private final List<SVNLogEntry> logEntries;
 	private final Set<Long> joinedRevisions = new HashSet<Long>();
+
+	private final int _totalRevs;
+
+	private int _doneRevs;
 	
 	public MergeCommitHandler(List<SVNLogEntry> logEntries, MergeHandler mergeHandler, CommitHandler commitHandler,
 			SVNClientManager clientManager, Configuration config) {
 		this.logEntries = logEntries;
+		_totalRevs = logEntries.size();
 		this._mergeHandler = mergeHandler;
 		this._diffClient = clientManager.getDiffClient();
 		this._commitHandler = commitHandler;
@@ -74,6 +79,8 @@ public class MergeCommitHandler {
 	}
 	
 	public void merge(Commit commit, SVNLogEntry logEntry) throws SVNException {
+		_doneRevs++;
+
 		Merge merge = _mergeHandler.parseMerge(logEntry);
 		if (merge.changedModules.size() == 0) {
 			Log.info("Skipping '" + merge.revision + "' (no relevant modules touched).");
@@ -82,7 +89,8 @@ public class MergeCommitHandler {
 		
 		boolean commitAproval = false;
 		
-		System.out.println("Revision " + logEntry.getRevision() + ": " + encode(logEntry.getMessage()));
+		System.out.println("Revision " + logEntry.getRevision() + " (" + _doneRevs + " of " + _totalRevs + "): "
+			+ encode(logEntry.getMessage()));
 		Map<File, List<SVNConflictDescription>> conflicts = merge.run(_mergeContext);
 		if (conflicts != Merge.NO_CONFLICTS) {
 			log(conflicts);
