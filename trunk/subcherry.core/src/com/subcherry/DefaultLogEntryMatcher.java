@@ -32,12 +32,12 @@ public class DefaultLogEntryMatcher extends SVNLogEntryMatcher {
 	private Set<String> _ignoreTickets;
 	private Collection<String> _milestones;
 
-	public DefaultLogEntryMatcher(LoginCredential tracCredentials, Configuration config) throws MalformedURLException {
-		_trac = new TracConnection(config.getTracURL(), tracCredentials.getUser(), tracCredentials.getPasswd());
+	public DefaultLogEntryMatcher(TracConnection trac, Configuration config, PortingTickets portingTickets) throws MalformedURLException {
+		_trac = trac;
 		
 		_ignoreRevisions = getIgnoreRevisions(config);
 		_additionalRevisions = getAdditionalRevisions(config);
-		_portingTickets = new PortingTickets(config, _trac);
+		_portingTickets = portingTickets;
 		_ignoreTickets = getIgnoreTickets(config);
 		_milestones = getMilestones(config);
 	}

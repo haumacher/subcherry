@@ -26,11 +26,11 @@ public class CommitHandler extends Handler {
 
 	final MessageRewriter _messageRewriter;
 
-	public CommitHandler(Configuration config, Set<String> modules) {
+	public CommitHandler(Configuration config, Set<String> modules, MessageRewriter messageRewriter) {
 		super(config);
 		
 		_modules = modules;
-		_messageRewriter = new MessageRewriter(config);
+		_messageRewriter = messageRewriter;
 	}
 
 	public Commit parseCommit(SVNLogEntry logEntry) {

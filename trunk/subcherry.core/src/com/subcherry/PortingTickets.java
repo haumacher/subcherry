@@ -36,20 +36,23 @@ public class PortingTickets {
 
 	private Map<String, PortType> _additionalTickets;
 
+	private final Configuration _config;
+
 	public PortingTickets(Configuration config, TracConnection trac) {
-		_additionalTickets = getAdditionalTickets(config);
-		PortType defaultPortType = getPortType(config);
-		Collection<? extends String> queryTickets = getQueryTickets(trac, config);
+		_config = config;
+		_additionalTickets = getAdditionalTickets();
+		PortType defaultPortType = getPortType();
+		Collection<? extends String> queryTickets = getQueryTickets(trac);
 		for (String queryTicket : queryTickets) {
 			_additionalTickets.put(queryTicket, defaultPortType);
 		}
 	}
 
-	private Map<String, PortType> getAdditionalTickets(Configuration config) {
-		String[] additionalTicketSpec = config.getAdditionalTickets();
+	private Map<String, PortType> getAdditionalTickets() {
+		String[] additionalTicketSpec = _config.getAdditionalTickets();
 		Map<String, PortType> result = new HashMap<String, PortType>();
 		for (String spec : additionalTicketSpec) {
-			Pattern pattern = Pattern.compile("(?:\\#)?(\\d+)(?:\\([^\\)]\\))");
+			Pattern pattern = Pattern.compile("(?:\\#)?(\\d+)(?:\\(([^\\)]+)\\))");
 			Matcher matcher = pattern.matcher(spec);
 			if (matcher.matches()) {
 				String portTypeSpec = matcher.group(2);
@@ -65,8 +68,8 @@ public class PortingTickets {
 		return result;
 	}
 
-	private Collection<? extends String> getQueryTickets(TracConnection trac, Configuration config) {
-		String ticketQuery = config.getTicketQuery();
+	private Collection<? extends String> getQueryTickets(TracConnection trac) {
+		String ticketQuery = _config.getTicketQuery();
 		if (ticketQuery == null || ticketQuery.trim().isEmpty()) {
 			return Collections.emptyList();
 		}
@@ -79,14 +82,14 @@ public class PortingTickets {
 		return result;
 	}
 
-	private PortType getPortType(Configuration config) {
-		if (config.getRebase()) {
+	private PortType getPortType() {
+		if (_config.getRebase()) {
 			return PortType.REBASE;
 		}
-		if (config.getRevert()) {
+		if (_config.getRevert()) {
 			return PortType.REVERT;
 		}
-		if (config.getPreview()) {
+		if (_config.getPreview()) {
 			return PortType.PREVIEW;
 		}
 		return PortType.PORT;
@@ -94,6 +97,14 @@ public class PortingTickets {
 
 	public boolean shouldPort(Ticket ticket) {
 		return _additionalTickets.containsKey(ticket.id());
+	}
+
+	public PortType getPortType(String ticketNumber) {
+		PortType result = _additionalTickets.get(ticketNumber);
+		if (result == null) {
+			return getPortType();
+		}
+		return result;
 	}
 
 }

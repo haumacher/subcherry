@@ -23,6 +23,8 @@ import java.util.regex.Pattern;
 import org.tmatesoft.svn.core.SVNLogEntry;
 
 import com.subcherry.Configuration;
+import com.subcherry.PortType;
+import com.subcherry.PortingTickets;
 import com.subcherry.utils.Utils;
 import com.subcherry.utils.Utils.TicketMessage;
 
@@ -30,8 +32,11 @@ public class MessageRewriter {
 
 	private final Configuration _config;
 
-	public MessageRewriter(Configuration config) {
+	private final PortingTickets _portingTickets;
+
+	public MessageRewriter(Configuration config, PortingTickets portingTickets) {
 		_config = config;
+		_portingTickets = portingTickets;
 	}
 
 	public String resolvePortMessage(SVNLogEntry logEntry) {
@@ -50,7 +55,7 @@ public class MessageRewriter {
 		newMesssage.append(message.ticketNumber);
 		newMesssage.append(": ");
 	
-		if (_config.getRebase()) {
+		if (shouldRebase(message.ticketNumber)) {
 			if (message.isHotfix()) {
 				addHotfix(newMesssage);
 			} else if (message.isPreview()) {
@@ -61,11 +66,14 @@ public class MessageRewriter {
 				addPort(newMesssage);
 			}
 		}
-		else if (_config.getPreview()) {
+		else if (shouldHotfix(message.ticketNumber)) {
+			addHotfix(newMesssage);
+		}
+		else if (shouldPreview(message.ticketNumber)) {
 			addPreview(newMesssage);
 		} 
 		else {
-			if (!_config.getRevert()) {
+			if (!shouldRevert(message.ticketNumber)) {
 				addPort(newMesssage);
 			}
 		}
@@ -74,7 +82,7 @@ public class MessageRewriter {
 			newMesssage.append("API change: ");
 		}
 		
-		if (_config.getRevert()) {
+		if (shouldRevert(message.ticketNumber)) {
 			newMesssage.append("Reverted ");
 		}
 		newMesssage.append("[");
@@ -83,6 +91,26 @@ public class MessageRewriter {
 		
 		newMesssage.append(message.originalMessage);
 		return newMesssage.toString();
+	}
+
+	private boolean shouldRevert(String ticketNumber) {
+		return getPortType(ticketNumber) == PortType.REVERT;
+	}
+
+	private boolean shouldPreview(String ticketNumber) {
+		return getPortType(ticketNumber) == PortType.PREVIEW;
+	}
+
+	private boolean shouldHotfix(String ticketNumber) {
+		return getPortType(ticketNumber) == PortType.HOTFIX;
+	}
+
+	private boolean shouldRebase(String ticketNumber) {
+		return getPortType(ticketNumber) == PortType.REBASE;
+	}
+
+	private PortType getPortType(String ticketNumber) {
+		return _portingTickets.getPortType(ticketNumber);
 	}
 
 	private String backPortMessage(String logEntryMessage) {

@@ -20,8 +20,10 @@ import org.tmatesoft.svn.core.wc.SVNRevision;
 import org.tmatesoft.svn.core.wc.SVNWCUtil;
 
 import com.subcherry.commit.CommitHandler;
+import com.subcherry.commit.MessageRewriter;
 import com.subcherry.log.DirCollector;
 import com.subcherry.merge.MergeHandler;
+import com.subcherry.trac.TracConnection;
 import com.subcherry.utils.Log;
 import com.subcherry.utils.Utils;
 
@@ -77,8 +79,11 @@ public class Main {
 		_modules.retainAll(getWorkspaceModules());
 		Log.info("Merging modules: " + _modules);
 		
-		SVNLogEntryMatcher logEntryMatcher = newLogEntryMatcher(tracCredentials);
-		CommitHandler commitHandler = newCommitHandler();
+		TracConnection trac = createTracConnection(tracCredentials);
+		PortingTickets portingTickets = new PortingTickets(_config, trac);
+		MessageRewriter messageRewriter = new MessageRewriter(_config, portingTickets);
+		SVNLogEntryMatcher logEntryMatcher = newLogEntryMatcher(trac, portingTickets);
+		CommitHandler commitHandler = newCommitHandler(messageRewriter);
 		MergeHandler mergeHandler = new MergeHandler(_config, _modules);
 		SVNURL url = SVNURL.parseURIDecoded(_config.getSvnURL());
 		String[] paths = {_config.getSourceBranch()};
@@ -143,13 +148,17 @@ public class Main {
 		}
 	}
 
-	private static SVNLogEntryMatcher newLogEntryMatcher(LoginCredential tracCredentials) throws MalformedURLException {
-		SVNLogEntryMatcher logEntryMatcher = new DefaultLogEntryMatcher(tracCredentials, _config);
-		return logEntryMatcher;
+	private static SVNLogEntryMatcher newLogEntryMatcher(TracConnection trac, PortingTickets portingTickets) throws MalformedURLException {
+		return new DefaultLogEntryMatcher(trac, _config, portingTickets);
 	}
 
-	private static CommitHandler newCommitHandler() {
-		return new CommitHandler(_config, _modules);
+	private static TracConnection createTracConnection(LoginCredential tracCredentials) throws MalformedURLException {
+		return new TracConnection(_config.getTracURL(), tracCredentials.getUser(),
+			tracCredentials.getPasswd());
+	}
+
+	private static CommitHandler newCommitHandler(MessageRewriter messageRewriter) {
+		return new CommitHandler(_config, _modules, messageRewriter);
 	}
 
 	private static String[] getPaths(Configuration config) {
