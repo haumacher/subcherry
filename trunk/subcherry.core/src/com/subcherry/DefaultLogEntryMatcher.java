@@ -6,7 +6,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.Vector;
 import java.util.logging.Logger;
 
 import org.tmatesoft.svn.core.SVNLogEntry;
@@ -27,7 +26,9 @@ public class DefaultLogEntryMatcher extends SVNLogEntryMatcher {
 	
 	private Set<Long> _ignoreRevisions;
 	private Set<Long> _additionalRevisions;
-	private Set<String> _additionalTickets;
+
+	private final PortingTickets _portingTickets;
+
 	private Set<String> _ignoreTickets;
 	private Collection<String> _milestones;
 
@@ -36,38 +37,17 @@ public class DefaultLogEntryMatcher extends SVNLogEntryMatcher {
 		
 		_ignoreRevisions = getIgnoreRevisions(config);
 		_additionalRevisions = getAdditionalRevisions(config);
-		_additionalTickets = getAdditionalTickets(config);
+		_portingTickets = new PortingTickets(config, _trac);
 		_ignoreTickets = getIgnoreTickets(config);
 		_milestones = getMilestones(config);
-		
-		_additionalTickets.addAll(getQueryTickets(config));
 	}
 	
-	private Collection<? extends String> getQueryTickets(Configuration config) {
-		String ticketQuery = config.getTicketQuery();
-		if (ticketQuery == null || ticketQuery.trim().isEmpty()) {
-			return Collections.emptyList();
-		}
-		
-		
-		Vector<Integer> ticketIds = _trac.getTicket().query(ticketQuery);
-		ArrayList<String> result = toStringIds(ticketIds);
-		
-		LOG.info("Using tickets from query: " + result);
-		
-		return result;
-	}
-
 	public static ArrayList<String> toStringIds(Collection<Integer> ticketIds) {
 		ArrayList<String> result = new ArrayList<String>();
 		for (Integer id : ticketIds) {
 			result.add(Integer.toString(id));
 		}
 		return result;
-	}
-
-	private Set<String> getAdditionalTickets(Configuration config) {
-		return toSet(config.getAdditionalTickets());
 	}
 
 	private Set<String> getIgnoreTickets(Configuration config) {
@@ -122,7 +102,7 @@ public class DefaultLogEntryMatcher extends SVNLogEntryMatcher {
 	}
 
 	private boolean portByTicket(Ticket ticket) {
-		if (_additionalTickets.contains(ticket.id())) {
+		if (_portingTickets.shouldPort(ticket)) {
 			return true;
 		}
 		if (_ignoreTickets.contains(ticket.id())) {
