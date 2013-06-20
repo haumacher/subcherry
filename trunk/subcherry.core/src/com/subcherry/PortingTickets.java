@@ -52,13 +52,18 @@ public class PortingTickets {
 		String[] additionalTicketSpec = _config.getAdditionalTickets();
 		Map<String, PortType> result = new HashMap<String, PortType>();
 		for (String spec : additionalTicketSpec) {
-			Pattern pattern = Pattern.compile("(?:\\#)?(\\d+)(?:\\(([^\\)]+)\\))");
+			Pattern pattern = Pattern.compile("(?:\\#)?(\\d+)(?:\\(([^\\)]+)\\))?");
 			Matcher matcher = pattern.matcher(spec);
 			if (matcher.matches()) {
 				String portTypeSpec = matcher.group(2);
-				PortType portType = PortType.valueOf(portTypeSpec.toUpperCase());
-				if (portType == null) {
-					throw new RuntimeException("Invalid port type: " + portTypeSpec);
+				PortType portType;
+				if (portTypeSpec == null) {
+					portType = PortType.PORT;
+				} else {
+					portType = PortType.valueOf(portTypeSpec.toUpperCase());
+					if (portType == null) {
+						throw new RuntimeException("Invalid port type: " + portTypeSpec);
+					}
 				}
 				result.put(matcher.group(1), portType);
 			} else {
