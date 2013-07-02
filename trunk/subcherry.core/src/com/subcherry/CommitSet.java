@@ -23,17 +23,10 @@ import com.subcherry.commit.Commit;
 
 public class CommitSet {
 
-	private final SVNLogEntry _logEntry;
-
 	private final Commit _commit;
 
 	public CommitSet(SVNLogEntry logEntry, Commit commit) {
-		_logEntry = logEntry;
 		_commit = commit;
-	}
-
-	public SVNLogEntry getLogEntry() {
-		return _logEntry;
 	}
 
 	public Commit getCommit() {
@@ -41,7 +34,7 @@ public class CommitSet {
 	}
 
 	public String getDescription() {
-		return "[" + _logEntry.getRevision() + "]: " + MergeCommitHandler.encode(_logEntry.getMessage());
+		return getCommit().getDescription();
 	}
 
 }

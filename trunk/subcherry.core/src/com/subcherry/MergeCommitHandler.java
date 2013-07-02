@@ -63,7 +63,7 @@ public class MergeCommitHandler {
 	public void run() throws SVNException {
 		for (int n = 0, cnt = _commitSets.size(); n < cnt; n++) {
 			CommitSet commitSet = _commitSets.get(n);
-			SVNLogEntry entry = commitSet.getLogEntry();
+			SVNLogEntry entry = commitSet.getCommit().getLogEntry();
 			if (joinedRevisions.contains(entry.getRevision())) {
 				continue;
 			}
@@ -211,7 +211,7 @@ public class MergeCommitHandler {
 					Commit joinedCommit = joinedCommitSet.getCommit();
 					commit.join(joinedCommit);
 					
-					merge(commit, joinedCommitSet.getLogEntry());
+					merge(commit, joinedCommitSet.getCommit().getLogEntry());
 					return true;
 				}
 				if (stopCommand.equals(input)) {
@@ -227,7 +227,7 @@ public class MergeCommitHandler {
 
 	private CommitSet getEntry(long joinedRevision) {
 		for (CommitSet entry : _commitSets) {
-			if (entry.getLogEntry().getRevision() == joinedRevision) {
+			if (entry.getCommit().getLogEntry().getRevision() == joinedRevision) {
 				return entry;
 			}
 		}

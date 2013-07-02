@@ -8,11 +8,13 @@ import java.util.Set;
 
 import org.tmatesoft.svn.core.SVNDepth;
 import org.tmatesoft.svn.core.SVNException;
+import org.tmatesoft.svn.core.SVNLogEntry;
 import org.tmatesoft.svn.core.SVNProperties;
 import org.tmatesoft.svn.core.wc.SVNCommitClient;
 import org.tmatesoft.svn.core.wc.SVNRevision;
 import org.tmatesoft.svn.core.wc.SVNUpdateClient;
 
+import com.subcherry.MergeCommitHandler;
 import com.subcherry.utils.ArrayUtil;
 
 /**
@@ -22,14 +24,21 @@ public class Commit {
 
 	private static final SVNProperties NO_ADDITIONAL_PROPERTIES = null;
 
+	private final SVNLogEntry _logEntry;
+
 	public Set<File> touchedModules;
 	public String commitMessage;
 	public File[] affectedPaths;
 
-	public Commit(Set<File> touchedModules, String commitMessage, File[] affectedPaths) {
+	public Commit(SVNLogEntry logEntry, Set<File> touchedModules, String commitMessage, File[] affectedPaths) {
+		_logEntry = logEntry;
 		this.touchedModules = touchedModules;
 		this.commitMessage = commitMessage;
 		this.affectedPaths = affectedPaths;
+	}
+
+	public SVNLogEntry getLogEntry() {
+		return _logEntry;
 	}
 
 	public void join(Commit joinedCommit) {
@@ -82,6 +91,10 @@ public class Commit {
 		toStringBuilder.append("Pathes:").append(Arrays.toString(affectedPaths));
 		toStringBuilder.append("]");
 		return toStringBuilder.toString();
+	}
+
+	public String getDescription() {
+		return "[" + getLogEntry().getRevision() + "]: " + MergeCommitHandler.encode(getLogEntry().getMessage());
 	}
 
 }

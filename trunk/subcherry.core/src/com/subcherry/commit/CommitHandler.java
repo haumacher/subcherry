@@ -38,7 +38,7 @@ public class CommitHandler extends Handler {
 		Set<File> touchedModules = getTouchedModules(changedPaths);
 		File[] affectedPaths = getAffectedPaths(changedPaths);
 		String commitMessage = _messageRewriter.resolvePortMessage(logEntry);
-		return new Commit(touchedModules, commitMessage, affectedPaths);
+		return new Commit(logEntry, touchedModules, commitMessage, affectedPaths);
 	}
 
 	private Set<File> getTouchedModules(Set<String> changedPaths) {
