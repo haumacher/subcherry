@@ -69,7 +69,7 @@ public class Utils {
 		}
 
 		public String getMergeMessage() {
-			return _messageRewriter.getMergeMessage(_commitMessage, _originalRevision);
+			return _messageRewriter.getMergeMessage(_originalRevision, this);
 		}
 	}
 

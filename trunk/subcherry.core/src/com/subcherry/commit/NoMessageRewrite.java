@@ -28,7 +28,7 @@ public class NoMessageRewrite extends MessageRewriter {
 	}
 
 	@Override
-	protected String getMergeMessage(long originalRevision, TicketMessage message) {
+	public String getMergeMessage(long originalRevision, TicketMessage message) {
 		return message.getLogEntryMessage();
 	}
 }

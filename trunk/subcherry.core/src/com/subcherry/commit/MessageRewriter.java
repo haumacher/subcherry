@@ -59,7 +59,7 @@ public class MessageRewriter {
 		return message.getMergeMessage();
 	}
 
-	protected String getMergeMessage(long originalRevision, TicketMessage message) {
+	public String getMergeMessage(long originalRevision, TicketMessage message) {
 		StringBuilder newMesssage = new StringBuilder();
 		newMesssage.append("Ticket #");
 		newMesssage.append(message.ticketNumber);

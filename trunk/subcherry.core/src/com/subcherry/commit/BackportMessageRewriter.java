@@ -31,7 +31,7 @@ public class BackportMessageRewriter extends MessageRewriter {
 	}
 
 	@Override
-	protected String getMergeMessage(long originalRevision, TicketMessage message) {
+	public String getMergeMessage(long originalRevision, TicketMessage message) {
 		return backPortMessage(message.getLogEntryMessage());
 	}
 
