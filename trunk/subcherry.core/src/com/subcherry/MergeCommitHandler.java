@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +13,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.tmatesoft.svn.core.SVNCommitInfo;
 import org.tmatesoft.svn.core.SVNException;
 import org.tmatesoft.svn.core.SVNLogEntry;
 import org.tmatesoft.svn.core.wc.SVNClientManager;
@@ -20,6 +22,7 @@ import org.tmatesoft.svn.core.wc.SVNDiffClient;
 
 import com.subcherry.commit.Commit;
 import com.subcherry.commit.CommitContext;
+import com.subcherry.commit.RevisionRewriter;
 import com.subcherry.merge.Merge;
 import com.subcherry.merge.MergeContext;
 import com.subcherry.merge.MergeHandler;
@@ -31,24 +34,37 @@ import com.subcherry.utils.Utils;
  */
 public class MergeCommitHandler {
 
+	private static class UpdateableRevisionRewriter implements RevisionRewriter {
+
+		private Map<Long, Long> _buffer = new HashMap<Long, Long>();
+
+		@Override
+		public long rewrite(long leadRevision) {
+			return _buffer.get(leadRevision);
+		}
+
+		public void add(long originalRevision, long newRevision) {
+			_buffer.put(originalRevision, newRevision);
+		}
+	}
+
 	private final MergeHandler _mergeHandler;
 	private final CommitContext _commitContext;
 	private final SVNDiffClient _diffClient;
 	private final MergeContext _mergeContext;
 	private final boolean _autoCommit;
 
-	private final List<CommitSet> _commitSets;
+	private List<CommitSet> _commitSets;
 
 	private final Set<Long> joinedRevisions = new HashSet<Long>();
 
-	private final int _totalRevs;
+	private int _totalRevs;
 
 	private int _doneRevs;
 	
-	public MergeCommitHandler(List<CommitSet> commitSets, MergeHandler mergeHandler, SVNClientManager clientManager,
-			Configuration config) {
-		_commitSets = commitSets;
-		_totalRevs = commitSets.size();
+	private UpdateableRevisionRewriter _revisionRewrite = new UpdateableRevisionRewriter();
+
+	public MergeCommitHandler(MergeHandler mergeHandler, SVNClientManager clientManager, Configuration config) {
 		this._mergeHandler = mergeHandler;
 		this._diffClient = clientManager.getDiffClient();
 		if (config.getNoCommit()) {
@@ -60,7 +76,10 @@ public class MergeCommitHandler {
 		_autoCommit = config.getAutoCommit();
 	}
 
-	public void run() throws SVNException {
+	public void run(List<CommitSet> commitSets) throws SVNException {
+		_commitSets = commitSets;
+		_totalRevs = commitSets.size();
+
 		for (int n = 0, cnt = _commitSets.size(); n < cnt; n++) {
 			CommitSet commitSet = _commitSets.get(n);
 			
@@ -116,8 +135,11 @@ public class MergeCommitHandler {
 			while(true) {
 				try {
 					Log.info("Execute:" + commit);
-					commit.run(_commitContext);
-					Log.info("Revision '" + logEntry.getRevision() + "' applied and committed.");
+					SVNCommitInfo commitInfo = commit.run(_commitContext);
+					Log.info("Revision '" + logEntry.getRevision() + "' merged and commited as '"
+						+ commitInfo.getNewRevision() + "'.");
+
+					_revisionRewrite.add(logEntry.getRevision(), commitInfo.getNewRevision());
 					break;
 				} catch(SVNException ex) {
 					System.out.println("Commit failed: " + ex.getLocalizedMessage());
@@ -271,6 +293,10 @@ public class MergeCommitHandler {
 
 		}
 		System.out.println(message.toString());
+	}
+
+	public RevisionRewriter getRevisionRewriter() {
+		return _revisionRewrite;
 	}
 
 }

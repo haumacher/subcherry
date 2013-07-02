@@ -28,32 +28,27 @@ import com.subcherry.utils.Utils.TicketMessage;
 
 public class MessageRewriter {
 
-	private static final RevisionRewriter NO_REWRITE = new RevisionRewriter() {
-		@Override
-		public long rewrite(long leadRevision) {
-			return 0;
-		}
-	};
-
-	public static MessageRewriter createMessageRewriter(Configuration config, PortingTickets portingTickets) {
+	public static MessageRewriter createMessageRewriter(Configuration config, PortingTickets portingTickets,
+			RevisionRewriter revisionRewriter) {
 		if (CommitHandler.ORIGINAL.equals(config.getPortMessage())) {
 			return new NoMessageRewrite(config, portingTickets);
 		}
 		if (CommitHandler.BACKPORT.equals(config.getPortMessage())) {
 			return new BackportMessageRewriter(config, portingTickets);
 		}
-		return new MessageRewriter(config, portingTickets);
+		return new MessageRewriter(config, portingTickets, revisionRewriter);
 	}
 
 	protected final Configuration _config;
 
 	private final PortingTickets _portingTickets;
 	
-	private final RevisionRewriter _revisionRewriter = NO_REWRITE;
+	private final RevisionRewriter _revisionRewriter;
 
-	protected MessageRewriter(Configuration config, PortingTickets portingTickets) {
+	protected MessageRewriter(Configuration config, PortingTickets portingTickets, RevisionRewriter revisionRewriter) {
 		_config = config;
 		_portingTickets = portingTickets;
+		_revisionRewriter = revisionRewriter;
 	}
 
 	public String getMergeMessage(long originalRevision, TicketMessage message) {

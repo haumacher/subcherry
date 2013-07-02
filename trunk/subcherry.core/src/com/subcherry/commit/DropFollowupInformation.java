@@ -17,18 +17,9 @@
  */
 package com.subcherry.commit;
 
-import com.subcherry.Configuration;
-import com.subcherry.PortingTickets;
-import com.subcherry.utils.Utils.TicketMessage;
-
-public class NoMessageRewrite extends MessageRewriter {
-
-	public NoMessageRewrite(Configuration config, PortingTickets portingTickets) {
-		super(config, portingTickets, new DropFollowupInformation());
-	}
-
+final class DropFollowupInformation implements RevisionRewriter {
 	@Override
-	public String getMergeMessage(long originalRevision, TicketMessage message) {
-		return message.getLogEntryMessage();
+	public long rewrite(long leadRevision) {
+		return 0;
 	}
 }

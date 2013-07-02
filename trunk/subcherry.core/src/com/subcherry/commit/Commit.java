@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.tmatesoft.svn.core.SVNCommitInfo;
 import org.tmatesoft.svn.core.SVNDepth;
 import org.tmatesoft.svn.core.SVNException;
 import org.tmatesoft.svn.core.SVNLogEntry;
@@ -62,12 +63,13 @@ public class Commit {
 		return buffer.toArray(new File[buffer.size()]);
 	}
 
-	public void run(CommitContext context) throws SVNException {
-		doCommit(context.commitClient);
+	public SVNCommitInfo run(CommitContext context) throws SVNException {
+		SVNCommitInfo commitInfo = doCommit(context.commitClient);
 		updateToHEAD(context.updateClient);
+		return commitInfo;
 	}
 
-	void doCommit(SVNCommitClient commitClient) throws SVNException {
+	SVNCommitInfo doCommit(SVNCommitClient commitClient) throws SVNException {
 		HashSet<File> commitPathes = new HashSet<File>();
 		Collections.addAll(commitPathes, affectedPaths);
 		commitPathes.addAll(touchedModules);
@@ -77,8 +79,10 @@ public class Commit {
 		boolean keepChangelist = false;
 		boolean force = false;
 		SVNDepth depth = SVNDepth.EMPTY; // all pathes are given explicitly
-		commitClient.doCommit(commitPathes.toArray(ArrayUtil.EMPTY_FILE_ARRAY), keepLocks, commitMessage,
+		SVNCommitInfo commitInfo =
+			commitClient.doCommit(commitPathes.toArray(ArrayUtil.EMPTY_FILE_ARRAY), keepLocks, commitMessage,
 				revisionProperties, changelists, keepChangelist, force, depth);
+		return commitInfo;
 	}
 
 	void updateToHEAD(SVNUpdateClient updateClient) throws SVNException {

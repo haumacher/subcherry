@@ -26,6 +26,7 @@ import org.tmatesoft.svn.core.wc.SVNWCUtil;
 import com.subcherry.commit.Commit;
 import com.subcherry.commit.CommitHandler;
 import com.subcherry.commit.MessageRewriter;
+import com.subcherry.commit.RevisionRewriter;
 import com.subcherry.log.DirCollector;
 import com.subcherry.merge.MergeHandler;
 import com.subcherry.trac.TracConnection;
@@ -86,10 +87,14 @@ public class Main {
 		
 		TracConnection trac = createTracConnection(tracCredentials);
 		PortingTickets portingTickets = new PortingTickets(_config, trac);
-		MessageRewriter messageRewriter = MessageRewriter.createMessageRewriter(_config, portingTickets);
+		MergeHandler mergeHandler = new MergeHandler(_config, _modules);
+		MergeCommitHandler mergeCommitHandler =
+			new MergeCommitHandler(mergeHandler, clientManager, _config);
+		RevisionRewriter revisionRewriter = mergeCommitHandler.getRevisionRewriter();
+		MessageRewriter messageRewriter =
+			MessageRewriter.createMessageRewriter(_config, portingTickets, revisionRewriter);
 		SVNLogEntryMatcher logEntryMatcher = newLogEntryMatcher(trac, portingTickets);
 		CommitHandler commitHandler = newCommitHandler(messageRewriter);
-		MergeHandler mergeHandler = new MergeHandler(_config, _modules);
 		SVNURL url = SVNURL.parseURIDecoded(_config.getSvnURL());
 		String[] paths = {_config.getSourceBranch()};
 
@@ -105,9 +110,7 @@ public class Main {
 		}
 		Log.info("Start merging " + commitSets.size() + " commit sets.");
 
-		MergeCommitHandler mergeCommitHandler =
-			new MergeCommitHandler(commitSets, mergeHandler, clientManager, _config);
-		mergeCommitHandler.run();
+		mergeCommitHandler.run(commitSets);
 
 		Restart.clear();
 	}

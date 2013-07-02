@@ -27,7 +27,7 @@ import com.subcherry.utils.Utils.TicketMessage;
 public class BackportMessageRewriter extends MessageRewriter {
 
 	protected BackportMessageRewriter(Configuration config, PortingTickets portingTickets) {
-		super(config, portingTickets);
+		super(config, portingTickets, new DropFollowupInformation());
 	}
 
 	@Override
