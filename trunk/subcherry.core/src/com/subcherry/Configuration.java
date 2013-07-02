@@ -32,6 +32,11 @@ public interface Configuration extends Value {
 	
 	boolean getRebase();
 
+	/**
+	 * Reorder commits to join "Follow-up" commits to their leading commit.
+	 */
+	boolean getReorderCommits();
+
 	String getTracURL();
 	
 	String getSvnURL();

@@ -18,7 +18,7 @@
 package com.subcherry;
 
 import java.io.PrintStream;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.tmatesoft.svn.core.SVNLogEntry;
@@ -30,7 +30,8 @@ public class CommitSet {
 	private final List<Commit> _commits;
 
 	public CommitSet(SVNLogEntry logEntry, Commit commit) {
-		_commits = Collections.singletonList(commit);
+		_commits = new ArrayList<Commit>(4);
+		add(commit);
 	}
 
 	public List<Commit> getCommits() {
@@ -50,6 +51,14 @@ public class CommitSet {
 		for (Commit commit : _commits) {
 			System.out.println(commit.getDescription());
 		}
+	}
+
+	public boolean isEmpty() {
+		return getCommits().isEmpty();
+	}
+
+	public void add(Commit commit) {
+		_commits.add(commit);
 	}
 
 }

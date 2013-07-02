@@ -7,7 +7,9 @@ import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -21,6 +23,7 @@ import org.tmatesoft.svn.core.wc.SVNLogClient;
 import org.tmatesoft.svn.core.wc.SVNRevision;
 import org.tmatesoft.svn.core.wc.SVNWCUtil;
 
+import com.subcherry.commit.Commit;
 import com.subcherry.commit.CommitHandler;
 import com.subcherry.commit.MessageRewriter;
 import com.subcherry.log.DirCollector;
@@ -94,6 +97,9 @@ public class Main {
 				logEntryMatcher);
 		
 		List<CommitSet> commitSets = getCommitSets(commitHandler, logEntryMatcher.getEntries());
+		if (_config.getReorderCommits()) {
+			reorderCommits(commitSets);
+		}
 		for (CommitSet commitSet : commitSets) {
 			commitSet.print(System.out);
 		}
@@ -104,6 +110,36 @@ public class Main {
 		mergeCommitHandler.run();
 
 		Restart.clear();
+	}
+
+	private static void reorderCommits(List<CommitSet> commitSets) {
+		HashMap<Long, CommitSet> commitSetByLeadRevision = new HashMap<Long, CommitSet>();
+		for (Iterator<CommitSet> setIt = commitSets.iterator(); setIt.hasNext();) {
+			CommitSet commitSet = setIt.next();
+
+			for (Iterator<Commit> it = commitSet.getCommits().iterator(); it.hasNext();) {
+				Commit commit = it.next();
+
+				long followUpRevision = commit.getFollowUpForRevison();
+				if (followUpRevision > 0) {
+					CommitSet leadCommitSet = commitSetByLeadRevision.get(followUpRevision);
+					if (leadCommitSet != null) {
+						leadCommitSet.add(commit);
+						it.remove();
+
+						commitSetByLeadRevision.put(commit.getRevision(), leadCommitSet);
+					} else {
+						Log.warning("Lead commit for follow-up not found: " + commit.getDescription());
+					}
+				}
+			}
+
+			if (!commitSet.isEmpty()) {
+				commitSetByLeadRevision.put(commitSet.getCommits().get(0).getRevision(), commitSet);
+			} else {
+				setIt.remove();
+			}
+		}
 	}
 
 	private static List<CommitSet> getCommitSets(CommitHandler commitHandler, List<SVNLogEntry> logEntries) {

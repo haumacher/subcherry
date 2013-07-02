@@ -97,4 +97,12 @@ public class Commit {
 		return "[" + getLogEntry().getRevision() + "]: " + MergeCommitHandler.encode(getLogEntry().getMessage());
 	}
 
+	public long getRevision() {
+		return getLogEntry().getRevision();
+	}
+
+	public long getFollowUpForRevison() {
+		return 0;
+	}
+
 }
