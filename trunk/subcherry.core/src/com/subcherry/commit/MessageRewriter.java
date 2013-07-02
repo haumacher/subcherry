@@ -20,8 +20,6 @@ package com.subcherry.commit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.tmatesoft.svn.core.SVNLogEntry;
-
 import com.subcherry.Configuration;
 import com.subcherry.PortType;
 import com.subcherry.PortingTickets;
@@ -29,6 +27,13 @@ import com.subcherry.utils.Utils;
 import com.subcherry.utils.Utils.TicketMessage;
 
 public class MessageRewriter {
+
+	private static final RevisionRewriter NO_REWRITE = new RevisionRewriter() {
+		@Override
+		public long rewrite(long leadRevision) {
+			return 0;
+		}
+	};
 
 	public static MessageRewriter createMessageRewriter(Configuration config, PortingTickets portingTickets) {
 		if (CommitHandler.ORIGINAL.equals(config.getPortMessage())) {
@@ -43,20 +48,12 @@ public class MessageRewriter {
 	protected final Configuration _config;
 
 	private final PortingTickets _portingTickets;
+	
+	private final RevisionRewriter _revisionRewriter = NO_REWRITE;
 
 	protected MessageRewriter(Configuration config, PortingTickets portingTickets) {
 		_config = config;
 		_portingTickets = portingTickets;
-	}
-
-	public final String resolvePortMessage(SVNLogEntry logEntry) {
-		return getMergeMessage(logEntry.getMessage(), logEntry.getRevision());
-	}
-
-	public final String getMergeMessage(String logEntryMessage, long originalRevision) {
-		TicketMessage message = new TicketMessage(originalRevision, logEntryMessage, this);
-	
-		return message.getMergeMessage();
 	}
 
 	public String getMergeMessage(long originalRevision, TicketMessage message) {
@@ -92,6 +89,13 @@ public class MessageRewriter {
 			newMesssage.append("API change: ");
 		}
 		
+		if (message.getLeadRevision() > 0) {
+			long rewrittenLeadRevision = _revisionRewriter.rewrite(message.getLeadRevision());
+			if (rewrittenLeadRevision > 0) {
+				newMesssage.append("Follow-up for [" + rewrittenLeadRevision + "]: ");
+			}
+		}
+
 		if (shouldRevert(message.ticketNumber)) {
 			newMesssage.append("Reverted ");
 		}

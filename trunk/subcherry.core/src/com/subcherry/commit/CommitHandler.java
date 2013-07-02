@@ -12,6 +12,7 @@ import com.subcherry.merge.Handler;
 import com.subcherry.utils.ArrayUtil;
 import com.subcherry.utils.Log;
 import com.subcherry.utils.Utils;
+import com.subcherry.utils.Utils.TicketMessage;
 
 /**
  * @version $Revision$ $Author$ $Date$
@@ -37,8 +38,9 @@ public class CommitHandler extends Handler {
 		Set<String> changedPaths = logEntry.getChangedPaths().keySet();
 		Set<File> touchedModules = getTouchedModules(changedPaths);
 		File[] affectedPaths = getAffectedPaths(changedPaths);
-		String commitMessage = _messageRewriter.resolvePortMessage(logEntry);
-		return new Commit(logEntry, touchedModules, commitMessage, affectedPaths);
+		TicketMessage ticketMessage = new TicketMessage(logEntry.getRevision(), logEntry.getMessage(), _messageRewriter);
+		String commitMessage = ticketMessage.getMergeMessage();
+		return new Commit(logEntry, touchedModules, ticketMessage, affectedPaths);
 	}
 
 	private Set<File> getTouchedModules(Set<String> changedPaths) {

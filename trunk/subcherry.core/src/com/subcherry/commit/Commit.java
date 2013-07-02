@@ -16,6 +16,7 @@ import org.tmatesoft.svn.core.wc.SVNUpdateClient;
 
 import com.subcherry.MergeCommitHandler;
 import com.subcherry.utils.ArrayUtil;
+import com.subcherry.utils.Utils.TicketMessage;
 
 /**
  * @version $Revision$ $Author$ $Date$
@@ -30,15 +31,22 @@ public class Commit {
 	public String commitMessage;
 	public File[] affectedPaths;
 
-	public Commit(SVNLogEntry logEntry, Set<File> touchedModules, String commitMessage, File[] affectedPaths) {
+	private final TicketMessage _ticketMessage;
+
+	public Commit(SVNLogEntry logEntry, Set<File> touchedModules, TicketMessage ticketMessage, File[] affectedPaths) {
 		_logEntry = logEntry;
 		this.touchedModules = touchedModules;
-		this.commitMessage = commitMessage;
+		_ticketMessage = ticketMessage;
+		this.commitMessage = ticketMessage.getMergeMessage();
 		this.affectedPaths = affectedPaths;
 	}
 
 	public SVNLogEntry getLogEntry() {
 		return _logEntry;
+	}
+
+	public TicketMessage getTicketMessage() {
+		return _ticketMessage;
 	}
 
 	public void join(Commit joinedCommit) {
@@ -102,7 +110,7 @@ public class Commit {
 	}
 
 	public long getFollowUpForRevison() {
-		return 0;
+		return _ticketMessage.getLeadRevision();
 	}
 
 }

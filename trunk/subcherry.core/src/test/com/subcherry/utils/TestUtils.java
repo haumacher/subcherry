@@ -13,10 +13,13 @@ import com.subcherry.utils.Utils.TicketMessage;
 public class TestUtils extends TestCase {
 
 	public void testPortMessage() {
-		TicketMessage message = new Utils.TicketMessage("Ticket #9438: Ported to CWS_TL_5_7_3_Patch_11_2 from TL_trunk: Follow-up for [148277]: Resolved merge conflict in Unimplementable: Added missing documentation.");
+		TicketMessage message =
+			new Utils.TicketMessage(
+				"Ticket #9438: Ported to CWS_TL_5_7_3_Patch_11_2 from TL_trunk: Resolved merge conflict in Unimplementable: Added missing documentation.");
 		assertEquals("9438", message.ticketNumber);
 		assertNull(message.apiChange);
-		assertEquals(" Follow-up for [148277]: Resolved merge conflict in Unimplementable: Added missing documentation.", message.originalMessage);
+		assertEquals(" Resolved merge conflict in Unimplementable: Added missing documentation.",
+			message.originalMessage);
 	}
 	
 	public void testAPIChangePortMessage() {
@@ -40,5 +43,11 @@ public class TestUtils extends TestCase {
 		assertEquals(" Added missing documentation.", message.originalMessage);
 	}
 	
+	public void testFollowUpMessage() {
+		TicketMessage message =
+			new Utils.TicketMessage("Ticket #9438: Follow-up for [4711]: API change: Added missing documentation.");
+		assertEquals(4711, message.getLeadRevision());
+	}
+
 }
 

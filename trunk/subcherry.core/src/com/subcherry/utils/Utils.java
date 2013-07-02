@@ -29,6 +29,8 @@ public class Utils {
 		private final long _originalRevision;
 
 		private final String _commitMessage;
+
+		private long _leadRevision;
 		
 		public TicketMessage(String commitMessage) {
 			this(0, commitMessage, NO_REWRITE);
@@ -46,6 +48,7 @@ public class Utils {
 			ticketNumber = getTicketNumber(matcher);
 			apiChange = getApiChange(matcher);
 			originalMessage = getOriginalMessage(matcher);
+			_leadRevision = extractLeadRevision(matcher);
 		}
 
 		public boolean isHotfix() {
@@ -71,6 +74,10 @@ public class Utils {
 		public String getMergeMessage() {
 			return _messageRewriter.getMergeMessage(_originalRevision, this);
 		}
+
+		public long getLeadRevision() {
+			return _leadRevision;
+		}
 	}
 
 	private static int group = 1;
@@ -79,6 +86,8 @@ public class Utils {
 	private static int HOTFIX_BRANCH_GROUP;
 	private static int IS_HOTFIX_GROUP;
 	private static int API_CHANGE_GROUP;
+
+	private static int FOLLOW_UP_GROUP;
 	private static int TICKET_NUMBER_GROUP;
 	private static int PREVIEW_BRANCH_GROUP;
 
@@ -114,7 +123,13 @@ public class Utils {
 	public static  BufferedReader SYSTEM_IN = new BufferedReader(new InputStreamReader(System.in));
 
 	private static String commitMessage() {
-		return "^" + ticketPrefix() + "(?:" + fromPrefix() + ")?" + "(?:" + apiChangePrefix() + ")?" + "(?:" + mergeRevisionPrefix() + ")?" + group(ORIG_MESSAGE_GROUP = group, originalMessage()) + "$";
+		return "^" +
+			ticketPrefix() +
+			"(?:" + fromPrefix() + ")?" +
+			"(?:" + apiChangePrefix() + ")?" +
+			"(?:" + followUpRevisionPrefix() + ")?" +
+			"(?:" + mergeRevisionPrefix() + ")?" +
+			group(ORIG_MESSAGE_GROUP = group, originalMessage()) + "$";
 	}
 	private static String ticketPrefix() {
 		return "Ticket #" + group(TICKET_NUMBER_GROUP = group, "\\d+") + ":";
@@ -138,6 +153,11 @@ public class Utils {
 	private static String apiChangePrefix() {
 		return group(API_CHANGE_GROUP = group, messagePart("API change"));
 	}
+
+	private static String followUpRevisionPrefix() {
+		return messagePart("Follow-up (?:\\d+ )?for \\[" + group(FOLLOW_UP_GROUP = group, "\\d+") + "\\]");
+	}
+
 	private static String mergeRevisionPrefix() {
 		return messagePart("\\[\\d+\\]");
 	}
@@ -175,6 +195,17 @@ public class Utils {
 		return matcher.group(ORIG_MESSAGE_GROUP);
 	}
 	
+	/**
+	 * The revision to which the current one is a follow-up.
+	 */
+	public static long extractLeadRevision(Matcher matcher) {
+		String leadRevision = matcher.group(FOLLOW_UP_GROUP);
+		if (leadRevision == null) {
+			return 0;
+		}
+		return Long.parseLong(leadRevision);
+	}
+
 	public static <T> Collection<T> nonNull(Collection<T> list) {
 		if (list == null) {
 			return Collections.emptyList();
