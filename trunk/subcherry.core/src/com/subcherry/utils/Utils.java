@@ -9,18 +9,36 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.subcherry.commit.MessageRewriter;
+
 /**
  * @version   $Revision$  $Author$  $Date$
  */
 public class Utils {
 
 	public static class TicketMessage {
+		private static final MessageRewriter NO_REWRITE = null;
+
 		public Matcher matcher;
 		public String ticketNumber;
 		public String apiChange;
 		public String originalMessage;
+
+		private final MessageRewriter _messageRewriter;
+
+		private final long _originalRevision;
+
+		private final String _commitMessage;
 		
 		public TicketMessage(String commitMessage) {
+			this(0, commitMessage, NO_REWRITE);
+		}
+
+		public TicketMessage(long originalRevision, String commitMessage, MessageRewriter messageRewriter) {
+			_originalRevision = originalRevision;
+			_commitMessage = commitMessage;
+			_messageRewriter = messageRewriter;
+
 			matcher = TICKET_PATTERN.matcher(commitMessage);
 			if (!matcher.matches()) {
 				throw new IllegalArgumentException("Message " + commitMessage  + " has illegal format."); 
@@ -44,6 +62,10 @@ public class Utils {
 
 		public boolean isPort() {
 			return matcher.group(Utils.PORTED_FROM_GROUP) != null;
+		}
+
+		public String getMergeMessage() {
+			return _messageRewriter.getMergeMessage(_commitMessage, _originalRevision);
 		}
 	}
 

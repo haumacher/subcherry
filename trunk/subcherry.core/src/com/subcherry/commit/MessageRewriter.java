@@ -39,8 +39,11 @@ public class MessageRewriter {
 		_portingTickets = portingTickets;
 	}
 
-	public String resolvePortMessage(SVNLogEntry logEntry) {
-		String logEntryMessage = logEntry.getMessage();
+	public final String resolvePortMessage(SVNLogEntry logEntry) {
+		return getMergeMessage(logEntry.getMessage(), logEntry.getRevision());
+	}
+
+	public String getMergeMessage(String logEntryMessage, long originalRevision) {
 		if (CommitHandler.ORIGINAL.equals(_config.getPortMessage())) {
 			return logEntryMessage; 
 		}
@@ -48,8 +51,12 @@ public class MessageRewriter {
 			return backPortMessage(logEntryMessage);
 		}
 		
-		TicketMessage message = new TicketMessage(logEntryMessage);
+		TicketMessage message = new TicketMessage(originalRevision, logEntryMessage, this);
 	
+		return message.getMergeMessage();
+	}
+
+	private String getMergeMessage(long originalRevision, TicketMessage message) {
 		StringBuilder newMesssage = new StringBuilder();
 		newMesssage.append("Ticket #");
 		newMesssage.append(message.ticketNumber);
@@ -86,7 +93,7 @@ public class MessageRewriter {
 			newMesssage.append("Reverted ");
 		}
 		newMesssage.append("[");
-		newMesssage.append(logEntry.getRevision());
+		newMesssage.append(originalRevision);
 		newMesssage.append("]:");
 		
 		newMesssage.append(message.originalMessage);
