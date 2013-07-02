@@ -45,7 +45,8 @@ public class TestUtils extends TestCase {
 	
 	public void testFollowUpMessage() {
 		TicketMessage message =
-			new Utils.TicketMessage("Ticket #9438: Follow-up for [4711]: API change: Added missing documentation.");
+			new Utils.TicketMessage("Ticket #9438: API change: Follow-up for [4711]: Added missing documentation.");
+		assertTrue(message.apiChange != null);
 		assertEquals(4711, message.getLeadRevision());
 	}
 
