@@ -169,7 +169,7 @@ public class MergeCommitHandler {
 		String joinCommand = "join: ";
 		try {
 			while (true) {
-				System.out.println(commitCommand + encode(commit.commitMessage));
+				System.out.println(commitCommand + encode(commit.getCommitMessage()));
 				System.out.println("Enter " + 
 				"'" + continueCommand  + "' to commit, " + 
 				"'" + commitCommand + "<message>' to commit with another message, " + 
@@ -181,7 +181,7 @@ public class MergeCommitHandler {
 				"'" + stopCommand + "' to stop the tool!");
 				String input = Utils.SYSTEM_IN.readLine();
 				if (input.startsWith(commitCommand)) {
-					commit.commitMessage = decode(input.substring(commitCommand.length()));
+					commit.setCommitMessage(decode(input.substring(commitCommand.length())));
 					return false;
 				}
 				if (input.startsWith(excludeCommand)) {
@@ -214,12 +214,12 @@ public class MergeCommitHandler {
 				}
 				if (apiCommand.equals(input)) {
 					Pattern apiChangeInsertPattern = Pattern.compile("^(Ticket #\\d+: Ported to [^ ]+(?: from [^:]+)?: )(.*)$", Pattern.DOTALL);
-					Matcher matcher = apiChangeInsertPattern.matcher(commit.commitMessage);
+					Matcher matcher = apiChangeInsertPattern.matcher(commit.getCommitMessage());
 					if (! matcher.matches()) {
 						System.err.println("Message could not be parsed to insert API change flag.");
 						continue;
 					}
-					commit.commitMessage = matcher.group(1) + "API change: " + matcher.group(2);
+					commit.setCommitMessage(matcher.group(1) + "API change: " + matcher.group(2));
 					return false;
 				}
 				if (continueCommand.equals(input)) {

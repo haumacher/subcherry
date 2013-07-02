@@ -29,7 +29,8 @@ public class Commit {
 	private final SVNLogEntry _logEntry;
 
 	public Set<File> touchedModules;
-	public String commitMessage;
+
+	private String commitMessage;
 	public File[] affectedPaths;
 
 	private final TicketMessage _ticketMessage;
@@ -38,7 +39,6 @@ public class Commit {
 		_logEntry = logEntry;
 		this.touchedModules = touchedModules;
 		_ticketMessage = ticketMessage;
-		this.commitMessage = ticketMessage.getMergeMessage();
 		this.affectedPaths = affectedPaths;
 	}
 
@@ -52,7 +52,7 @@ public class Commit {
 
 	public void join(Commit joinedCommit) {
 		touchedModules.addAll(joinedCommit.touchedModules);
-		commitMessage = commitMessage + "\\n" + joinedCommit.commitMessage;
+		setCommitMessage(getCommitMessage() + "\\n" + joinedCommit.getCommitMessage());
 		affectedPaths = join(affectedPaths, joinedCommit.affectedPaths);
 	}
 
@@ -80,7 +80,7 @@ public class Commit {
 		boolean force = false;
 		SVNDepth depth = SVNDepth.EMPTY; // all pathes are given explicitly
 		SVNCommitInfo commitInfo =
-			commitClient.doCommit(commitPathes.toArray(ArrayUtil.EMPTY_FILE_ARRAY), keepLocks, commitMessage,
+			commitClient.doCommit(commitPathes.toArray(ArrayUtil.EMPTY_FILE_ARRAY), keepLocks, getCommitMessage(),
 				revisionProperties, changelists, keepChangelist, force, depth);
 		return commitInfo;
 	}
@@ -98,7 +98,7 @@ public class Commit {
 	public String toString() {
 		StringBuilder toStringBuilder = new StringBuilder();
 		toStringBuilder.append("Commit[");
-		toStringBuilder.append("Msg:").append(commitMessage);
+		toStringBuilder.append("Msg:").append(getCommitMessage());
 		toStringBuilder.append(',');
 		toStringBuilder.append("Pathes:").append(Arrays.toString(affectedPaths));
 		toStringBuilder.append("]");
@@ -115,6 +115,17 @@ public class Commit {
 
 	public long getFollowUpForRevison() {
 		return _ticketMessage.getLeadRevision();
+	}
+
+	public String getCommitMessage() {
+		if (commitMessage == null) {
+			commitMessage = _ticketMessage.getMergeMessage();
+		}
+		return commitMessage;
+	}
+
+	public void setCommitMessage(String commitMessage) {
+		this.commitMessage = commitMessage;
 	}
 
 }
