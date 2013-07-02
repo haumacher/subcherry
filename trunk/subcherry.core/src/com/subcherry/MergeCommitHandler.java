@@ -85,7 +85,7 @@ public class MergeCommitHandler {
 
 	public void run(List<CommitSet> commitSets) throws SVNException {
 		_commitSets = commitSets;
-		_totalRevs = commitSets.size();
+		_totalRevs = getTotalRevs(commitSets);
 
 		for (int n = 0, cnt = _commitSets.size(); n < cnt; n++) {
 			CommitSet commitSet = _commitSets.get(n);
@@ -105,6 +105,14 @@ public class MergeCommitHandler {
 				merge(commit, entry);
 			}
 		}
+	}
+
+	private int getTotalRevs(List<CommitSet> commitSets) {
+		int result = commitSets.size();
+		for (CommitSet commitSet : commitSets) {
+			result += commitSet.getCommits().size();
+		}
+		return result;
 	}
 	
 	public void merge(Commit commit, SVNLogEntry logEntry) throws SVNException {
