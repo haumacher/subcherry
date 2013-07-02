@@ -4,9 +4,11 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.tmatesoft.svn.core.SVNException;
@@ -91,15 +93,25 @@ public class Main {
 		logClient.doLog(url, paths, pegRevision, startRevision, endRevision, stopOnCopy, discoverChangedPaths, limit,
 				logEntryMatcher);
 		
-		for (SVNLogEntry entry : logEntryMatcher.getEntries()) {
-			System.out.println("[" + entry.getRevision() + "]: " + MergeCommitHandler.encode(entry.getMessage()));
+		List<CommitSet> commitSets = getCommitSets(logEntryMatcher.getEntries());
+		for (CommitSet commitSet : commitSets) {
+			System.out.println(commitSet.getDescription());
 		}
-		Log.info("Start merging " + logEntryMatcher.getEntries().size() + " revisions.");
+		Log.info("Start merging " + commitSets.size() + " commit sets.");
 
-		MergeCommitHandler mergeCommitHandler = new MergeCommitHandler(logEntryMatcher.getEntries(), mergeHandler, commitHandler, clientManager, _config);
+		MergeCommitHandler mergeCommitHandler =
+			new MergeCommitHandler(commitSets, mergeHandler, commitHandler, clientManager, _config);
 		mergeCommitHandler.run();
 
 		Restart.clear();
+	}
+
+	private static List<CommitSet> getCommitSets(List<SVNLogEntry> logEntries) {
+		ArrayList<CommitSet> result = new ArrayList<CommitSet>(logEntries.size());
+		for (SVNLogEntry logEntry : logEntries) {
+			result.add(new CommitSet(logEntry));
+		}
+		return result;
 	}
 
 	private static SVNRevision getPegRevision(SVNRevision startRevision) {

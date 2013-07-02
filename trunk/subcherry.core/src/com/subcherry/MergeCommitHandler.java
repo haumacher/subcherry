@@ -38,17 +38,19 @@ public class MergeCommitHandler {
 	private final SVNDiffClient _diffClient;
 	private final MergeContext _mergeContext;
 	private final boolean _autoCommit;
-	private final List<SVNLogEntry> logEntries;
+
+	private final List<CommitSet> _commitSets;
+
 	private final Set<Long> joinedRevisions = new HashSet<Long>();
 
 	private final int _totalRevs;
 
 	private int _doneRevs;
 	
-	public MergeCommitHandler(List<SVNLogEntry> logEntries, MergeHandler mergeHandler, CommitHandler commitHandler,
+	public MergeCommitHandler(List<CommitSet> commitSets, MergeHandler mergeHandler, CommitHandler commitHandler,
 			SVNClientManager clientManager, Configuration config) {
-		this.logEntries = logEntries;
-		_totalRevs = logEntries.size();
+		_commitSets = commitSets;
+		_totalRevs = commitSets.size();
 		this._mergeHandler = mergeHandler;
 		this._diffClient = clientManager.getDiffClient();
 		this._commitHandler = commitHandler;
@@ -62,8 +64,8 @@ public class MergeCommitHandler {
 	}
 
 	public void run() throws SVNException {
-		for (int n = 0, cnt = logEntries.size(); n < cnt; n++) {
-			SVNLogEntry entry = logEntries.get(n);
+		for (int n = 0, cnt = _commitSets.size(); n < cnt; n++) {
+			SVNLogEntry entry = _commitSets.get(n).getCommit();
 			if (joinedRevisions.contains(entry.getRevision())) {
 				continue;
 			}
@@ -201,17 +203,17 @@ public class MergeCommitHandler {
 				}
 				if (input.startsWith(joinCommand)) {
 					long joinedRevision = Long.parseLong(input.substring(joinCommand.length()));
-					SVNLogEntry joinedEntry = getEntry(joinedRevision);
-					if (joinedEntry == null) {
+					CommitSet joinedCommitSet = getEntry(joinedRevision);
+					if (joinedCommitSet == null) {
 						System.err.println("Revision [" + joinedRevision + "] is not part of this merge.");
 						continue;
 					}
 					joinedRevisions.add(joinedRevision);
 					
-					Commit joinedCommit = _commitHandler.parseCommit(joinedEntry);
+					Commit joinedCommit = _commitHandler.parseCommit(joinedCommitSet.getCommit());
 					commit.join(joinedCommit);
 					
-					merge(commit, joinedEntry);
+					merge(commit, joinedCommitSet.getCommit());
 					return true;
 				}
 				if (stopCommand.equals(input)) {
@@ -225,9 +227,9 @@ public class MergeCommitHandler {
 		}
 	}
 
-	private SVNLogEntry getEntry(long joinedRevision) {
-		for (SVNLogEntry entry : logEntries) {
-			if (entry.getRevision() == joinedRevision) {
+	private CommitSet getEntry(long joinedRevision) {
+		for (CommitSet entry : _commitSets) {
+			if (entry.getCommit().getRevision() == joinedRevision) {
 				return entry;
 			}
 		}
