@@ -63,18 +63,21 @@ public class MergeCommitHandler {
 	public void run() throws SVNException {
 		for (int n = 0, cnt = _commitSets.size(); n < cnt; n++) {
 			CommitSet commitSet = _commitSets.get(n);
-			SVNLogEntry entry = commitSet.getCommit().getLogEntry();
-			if (joinedRevisions.contains(entry.getRevision())) {
-				continue;
-			}
 			
-			try {
-				Restart.setRevision(entry.getRevision());
-			} catch (IOException ex) {
-				Log.info("Unable to store restart revision");
+			for (Commit commit : commitSet.getCommits()) {
+				SVNLogEntry entry = commit.getLogEntry();
+				if (joinedRevisions.contains(entry.getRevision())) {
+					continue;
+				}
+
+				try {
+					Restart.setRevision(entry.getRevision());
+				} catch (IOException ex) {
+					Log.info("Unable to store restart revision");
+				}
+
+				merge(commit, entry);
 			}
-			
-			merge(commitSet.getCommit(), entry);
 		}
 	}
 	

@@ -18,6 +18,8 @@
 package com.subcherry;
 
 import java.io.PrintStream;
+import java.util.Collections;
+import java.util.List;
 
 import org.tmatesoft.svn.core.SVNLogEntry;
 
@@ -25,25 +27,29 @@ import com.subcherry.commit.Commit;
 
 public class CommitSet {
 
-	private final Commit _commit;
+	private final List<Commit> _commits;
 
 	public CommitSet(SVNLogEntry logEntry, Commit commit) {
-		_commit = commit;
+		_commits = Collections.singletonList(commit);
 	}
 
-	public Commit getCommit() {
-		return _commit;
+	public List<Commit> getCommits() {
+		return _commits;
 	}
 
 	public Commit getCommit(long joinedRevision) {
-		if (getCommit().getLogEntry().getRevision() == joinedRevision) {
-			return getCommit();
+		for (Commit commit : _commits) {
+			if (commit.getLogEntry().getRevision() == joinedRevision) {
+				return commit;
+			}
 		}
 		return null;
 	}
 
 	public void print(PrintStream out) {
-		System.out.println(getCommit().getDescription());
+		for (Commit commit : _commits) {
+			System.out.println(commit.getDescription());
+		}
 	}
 
 }
