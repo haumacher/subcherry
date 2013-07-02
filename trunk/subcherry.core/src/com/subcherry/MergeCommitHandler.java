@@ -42,12 +42,15 @@ public class MergeCommitHandler {
 		public long rewrite(long oldRevision) {
 			Long newRevision = _buffer.get(oldRevision);
 			if (newRevision == null) {
-				return 0;
+				return oldRevision;
 			}
 			return newRevision;
 		}
 
 		public void add(long originalRevision, long newRevision) {
+			if (newRevision <= 0) {
+				return;
+			}
 			_buffer.put(originalRevision, newRevision);
 		}
 	}
