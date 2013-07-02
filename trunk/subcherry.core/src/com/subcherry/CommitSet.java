@@ -17,6 +17,8 @@
  */
 package com.subcherry;
 
+import java.io.PrintStream;
+
 import org.tmatesoft.svn.core.SVNLogEntry;
 
 import com.subcherry.commit.Commit;
@@ -33,15 +35,15 @@ public class CommitSet {
 		return _commit;
 	}
 
-	public String getDescription() {
-		return getCommit().getDescription();
-	}
-
 	public Commit getCommit(long joinedRevision) {
 		if (getCommit().getLogEntry().getRevision() == joinedRevision) {
 			return getCommit();
 		}
 		return null;
+	}
+
+	public void print(PrintStream out) {
+		System.out.println(getCommit().getDescription());
 	}
 
 }

@@ -95,7 +95,7 @@ public class Main {
 		
 		List<CommitSet> commitSets = getCommitSets(commitHandler, logEntryMatcher.getEntries());
 		for (CommitSet commitSet : commitSets) {
-			System.out.println(commitSet.getDescription());
+			commitSet.print(System.out);
 		}
 		Log.info("Start merging " + commitSets.size() + " commit sets.");
 
