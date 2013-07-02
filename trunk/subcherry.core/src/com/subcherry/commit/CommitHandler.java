@@ -39,7 +39,6 @@ public class CommitHandler extends Handler {
 		Set<File> touchedModules = getTouchedModules(changedPaths);
 		File[] affectedPaths = getAffectedPaths(changedPaths);
 		TicketMessage ticketMessage = new TicketMessage(logEntry.getRevision(), logEntry.getMessage(), _messageRewriter);
-		String commitMessage = ticketMessage.getMergeMessage();
 		return new Commit(logEntry, touchedModules, ticketMessage, affectedPaths);
 	}
 
