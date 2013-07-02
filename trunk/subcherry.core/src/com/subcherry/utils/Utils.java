@@ -30,7 +30,7 @@ public class Utils {
 
 		private final String _commitMessage;
 
-		private long _leadRevision;
+		private final long _leadRevision;
 		
 		public TicketMessage(String commitMessage) {
 			this(0, commitMessage, NO_REWRITE);
