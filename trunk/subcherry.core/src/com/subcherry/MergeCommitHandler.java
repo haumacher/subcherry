@@ -39,8 +39,12 @@ public class MergeCommitHandler {
 		private Map<Long, Long> _buffer = new HashMap<Long, Long>();
 
 		@Override
-		public long rewrite(long leadRevision) {
-			return _buffer.get(leadRevision);
+		public long rewrite(long oldRevision) {
+			Long newRevision = _buffer.get(oldRevision);
+			if (newRevision == null) {
+				return 0;
+			}
+			return newRevision;
 		}
 
 		public void add(long originalRevision, long newRevision) {
