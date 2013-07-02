@@ -86,7 +86,7 @@ public class Main {
 		
 		TracConnection trac = createTracConnection(tracCredentials);
 		PortingTickets portingTickets = new PortingTickets(_config, trac);
-		MessageRewriter messageRewriter = new MessageRewriter(_config, portingTickets);
+		MessageRewriter messageRewriter = MessageRewriter.createMessageRewriter(_config, portingTickets);
 		SVNLogEntryMatcher logEntryMatcher = newLogEntryMatcher(trac, portingTickets);
 		CommitHandler commitHandler = newCommitHandler(messageRewriter);
 		MergeHandler mergeHandler = new MergeHandler(_config, _modules);

@@ -30,11 +30,21 @@ import com.subcherry.utils.Utils.TicketMessage;
 
 public class MessageRewriter {
 
-	private final Configuration _config;
+	public static MessageRewriter createMessageRewriter(Configuration config, PortingTickets portingTickets) {
+		if (CommitHandler.ORIGINAL.equals(config.getPortMessage())) {
+			return new NoMessageRewrite(config, portingTickets);
+		}
+		if (CommitHandler.BACKPORT.equals(config.getPortMessage())) {
+			return new BackportMessageRewriter(config, portingTickets);
+		}
+		return new MessageRewriter(config, portingTickets);
+	}
+
+	protected final Configuration _config;
 
 	private final PortingTickets _portingTickets;
 
-	public MessageRewriter(Configuration config, PortingTickets portingTickets) {
+	protected MessageRewriter(Configuration config, PortingTickets portingTickets) {
 		_config = config;
 		_portingTickets = portingTickets;
 	}
@@ -44,13 +54,6 @@ public class MessageRewriter {
 	}
 
 	public String getMergeMessage(String logEntryMessage, long originalRevision) {
-		if (CommitHandler.ORIGINAL.equals(_config.getPortMessage())) {
-			return logEntryMessage; 
-		}
-		if (CommitHandler.BACKPORT.equals(_config.getPortMessage())) {
-			return backPortMessage(logEntryMessage);
-		}
-		
 		TicketMessage message = new TicketMessage(originalRevision, logEntryMessage, this);
 	
 		return message.getMergeMessage();
@@ -120,30 +123,6 @@ public class MessageRewriter {
 		return _portingTickets.getPortType(ticketNumber);
 	}
 
-	private String backPortMessage(String logEntryMessage) {
-		String branchName = getBranchName(_config.getSourceBranch());
-		Pattern pattern = Pattern.compile("Ticket #(\\d+): On " + branchName + ": (.*)", Pattern.DOTALL);
-		Matcher matcher = pattern.matcher(logEntryMessage);
-		if (!matcher.matches()) {
-			throw new IllegalStateException();
-		}
-		String ticketNumber = matcher.group(1);
-		String originalMessage = matcher.group(2);
-		
-		StringBuilder backportMessage = new StringBuilder("Ticket #");
-		backportMessage.append(ticketNumber);
-		backportMessage.append(": ");
-		
-		String targetBranch = getBranchName(_config.getTargetBranch());
-		if (!isTrunk(targetBranch)) {
-			backportMessage.append("On ");
-			backportMessage.append(targetBranch);
-			backportMessage.append(": ");
-		}
-		backportMessage.append(originalMessage);
-		return backportMessage.toString();
-	}
-
 	private void addHotfix(StringBuilder newMesssage) {
 		newMesssage.append("Hotfix for ");
 		newMesssage.append(getBranchName(_config.getTargetBranch()));
@@ -170,7 +149,7 @@ public class MessageRewriter {
 		newMesssage.append(": ");
 	}
 
-	private String getBranchName(String branch) {
+	protected final String getBranchName(String branch) {
 		Pattern trunkPattern = Pattern.compile("^/?(" + CommitHandler.TRUNK +")(?:/([^/]+))$");
 		Matcher trunkMatcher = trunkPattern.matcher(branch);
 		if (trunkMatcher.matches()) {
@@ -185,7 +164,7 @@ public class MessageRewriter {
 		}
 	}
 
-	private boolean isTrunk(String branchName) {
+	protected final boolean isTrunk(String branchName) {
 		return branchName.endsWith(CommitHandler.TRUNK);
 	}
 
