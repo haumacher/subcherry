@@ -51,12 +51,26 @@ public class MessageRewriter {
 		_revisionRewriter = revisionRewriter;
 	}
 
-	public String getMergeMessage(long originalRevision, TicketMessage message) {
+	public String getMergeMessage(TicketMessage message) {
 		StringBuilder newMesssage = new StringBuilder();
+
+		appendTicketPrefix(newMesssage, message);
+		appendPortingTypeModifier(newMesssage, message);
+		appendApiChangeModifier(newMesssage, message);
+		appendFollowUpModifier(newMesssage, message);
+		appendOriginalRevisionModifier(newMesssage, message);
+		appendOriginalMessage(newMesssage, message);
+
+		return newMesssage.toString();
+	}
+
+	protected void appendTicketPrefix(StringBuilder newMesssage, TicketMessage message) {
 		newMesssage.append("Ticket #");
 		newMesssage.append(message.ticketNumber);
 		newMesssage.append(": ");
-	
+	}
+
+	protected void appendPortingTypeModifier(StringBuilder newMesssage, TicketMessage message) {
 		if (shouldRebase(message.ticketNumber)) {
 			if (message.isHotfix()) {
 				addHotfix(newMesssage);
@@ -79,27 +93,34 @@ public class MessageRewriter {
 				addPort(newMesssage);
 			}
 		}
-	
+	}
+
+	protected void appendApiChangeModifier(StringBuilder newMesssage, TicketMessage message) {
 		if (message.apiChange != null) {
 			newMesssage.append("API change: ");
 		}
-		
+	}
+
+	protected void appendFollowUpModifier(StringBuilder newMesssage, TicketMessage message) {
 		if (message.getLeadRevision() > 0) {
 			long rewrittenLeadRevision = _revisionRewriter.rewrite(message.getLeadRevision());
 			if (rewrittenLeadRevision > 0) {
 				newMesssage.append("Follow-up for [" + rewrittenLeadRevision + "]: ");
 			}
 		}
+	}
 
+	protected void appendOriginalRevisionModifier(StringBuilder newMesssage, TicketMessage message) {
 		if (shouldRevert(message.ticketNumber)) {
 			newMesssage.append("Reverted ");
 		}
 		newMesssage.append("[");
-		newMesssage.append(originalRevision);
+		newMesssage.append(message.getOriginalRevision());
 		newMesssage.append("]:");
-		
+	}
+
+	protected void appendOriginalMessage(StringBuilder newMesssage, TicketMessage message) {
 		newMesssage.append(message.originalMessage);
-		return newMesssage.toString();
 	}
 
 	private boolean shouldRevert(String ticketNumber) {

@@ -72,7 +72,11 @@ public class Utils {
 		}
 
 		public String getMergeMessage() {
-			return _messageRewriter.getMergeMessage(_originalRevision, this);
+			return _messageRewriter.getMergeMessage(this);
+		}
+
+		public long getOriginalRevision() {
+			return _originalRevision;
 		}
 
 		public long getLeadRevision() {
