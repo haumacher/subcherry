@@ -93,23 +93,23 @@ public class Main {
 		logClient.doLog(url, paths, pegRevision, startRevision, endRevision, stopOnCopy, discoverChangedPaths, limit,
 				logEntryMatcher);
 		
-		List<CommitSet> commitSets = getCommitSets(logEntryMatcher.getEntries());
+		List<CommitSet> commitSets = getCommitSets(commitHandler, logEntryMatcher.getEntries());
 		for (CommitSet commitSet : commitSets) {
 			System.out.println(commitSet.getDescription());
 		}
 		Log.info("Start merging " + commitSets.size() + " commit sets.");
 
 		MergeCommitHandler mergeCommitHandler =
-			new MergeCommitHandler(commitSets, mergeHandler, commitHandler, clientManager, _config);
+			new MergeCommitHandler(commitSets, mergeHandler, clientManager, _config);
 		mergeCommitHandler.run();
 
 		Restart.clear();
 	}
 
-	private static List<CommitSet> getCommitSets(List<SVNLogEntry> logEntries) {
+	private static List<CommitSet> getCommitSets(CommitHandler commitHandler, List<SVNLogEntry> logEntries) {
 		ArrayList<CommitSet> result = new ArrayList<CommitSet>(logEntries.size());
 		for (SVNLogEntry logEntry : logEntries) {
-			result.add(new CommitSet(logEntry));
+			result.add(new CommitSet(logEntry, commitHandler.parseCommit(logEntry)));
 		}
 		return result;
 	}

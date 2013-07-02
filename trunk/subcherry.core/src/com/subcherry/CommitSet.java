@@ -19,16 +19,25 @@ package com.subcherry;
 
 import org.tmatesoft.svn.core.SVNLogEntry;
 
+import com.subcherry.commit.Commit;
+
 public class CommitSet {
 
 	private final SVNLogEntry _logEntry;
 
-	public CommitSet(SVNLogEntry logEntry) {
+	private final Commit _commit;
+
+	public CommitSet(SVNLogEntry logEntry, Commit commit) {
 		_logEntry = logEntry;
+		_commit = commit;
 	}
 
-	public SVNLogEntry getCommit() {
+	public SVNLogEntry getLogEntry() {
 		return _logEntry;
+	}
+
+	public Commit getCommit() {
+		return _commit;
 	}
 
 	public String getDescription() {

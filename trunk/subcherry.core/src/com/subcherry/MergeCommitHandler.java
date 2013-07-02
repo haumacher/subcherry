@@ -20,7 +20,6 @@ import org.tmatesoft.svn.core.wc.SVNDiffClient;
 
 import com.subcherry.commit.Commit;
 import com.subcherry.commit.CommitContext;
-import com.subcherry.commit.CommitHandler;
 import com.subcherry.merge.Merge;
 import com.subcherry.merge.MergeContext;
 import com.subcherry.merge.MergeHandler;
@@ -33,7 +32,6 @@ import com.subcherry.utils.Utils;
 public class MergeCommitHandler {
 
 	private final MergeHandler _mergeHandler;
-	private final CommitHandler _commitHandler;
 	private final CommitContext _commitContext;
 	private final SVNDiffClient _diffClient;
 	private final MergeContext _mergeContext;
@@ -47,13 +45,12 @@ public class MergeCommitHandler {
 
 	private int _doneRevs;
 	
-	public MergeCommitHandler(List<CommitSet> commitSets, MergeHandler mergeHandler, CommitHandler commitHandler,
-			SVNClientManager clientManager, Configuration config) {
+	public MergeCommitHandler(List<CommitSet> commitSets, MergeHandler mergeHandler, SVNClientManager clientManager,
+			Configuration config) {
 		_commitSets = commitSets;
 		_totalRevs = commitSets.size();
 		this._mergeHandler = mergeHandler;
 		this._diffClient = clientManager.getDiffClient();
-		this._commitHandler = commitHandler;
 		if (config.getNoCommit()) {
 			_commitContext = null;
 		} else {
@@ -65,7 +62,8 @@ public class MergeCommitHandler {
 
 	public void run() throws SVNException {
 		for (int n = 0, cnt = _commitSets.size(); n < cnt; n++) {
-			SVNLogEntry entry = _commitSets.get(n).getCommit();
+			CommitSet commitSet = _commitSets.get(n);
+			SVNLogEntry entry = commitSet.getLogEntry();
 			if (joinedRevisions.contains(entry.getRevision())) {
 				continue;
 			}
@@ -76,7 +74,7 @@ public class MergeCommitHandler {
 				Log.info("Unable to store restart revision");
 			}
 			
-			merge(_commitHandler.parseCommit(entry), entry);
+			merge(commitSet.getCommit(), entry);
 		}
 	}
 	
@@ -210,10 +208,10 @@ public class MergeCommitHandler {
 					}
 					joinedRevisions.add(joinedRevision);
 					
-					Commit joinedCommit = _commitHandler.parseCommit(joinedCommitSet.getCommit());
+					Commit joinedCommit = joinedCommitSet.getCommit();
 					commit.join(joinedCommit);
 					
-					merge(commit, joinedCommitSet.getCommit());
+					merge(commit, joinedCommitSet.getLogEntry());
 					return true;
 				}
 				if (stopCommand.equals(input)) {
@@ -229,7 +227,7 @@ public class MergeCommitHandler {
 
 	private CommitSet getEntry(long joinedRevision) {
 		for (CommitSet entry : _commitSets) {
-			if (entry.getCommit().getRevision() == joinedRevision) {
+			if (entry.getLogEntry().getRevision() == joinedRevision) {
 				return entry;
 			}
 		}
