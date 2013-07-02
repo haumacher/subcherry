@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
 
 import com.subcherry.Configuration;
 import com.subcherry.PortingTickets;
+import com.subcherry.utils.Utils.TicketMessage;
 
 public class BackportMessageRewriter extends MessageRewriter {
 
@@ -30,8 +31,8 @@ public class BackportMessageRewriter extends MessageRewriter {
 	}
 
 	@Override
-	public String getMergeMessage(String logEntryMessage, long originalRevision) {
-		return backPortMessage(logEntryMessage);
+	protected String getMergeMessage(long originalRevision, TicketMessage message) {
+		return backPortMessage(message.getLogEntryMessage());
 	}
 
 	private String backPortMessage(String logEntryMessage) {

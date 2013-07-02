@@ -19,6 +19,7 @@ package com.subcherry.commit;
 
 import com.subcherry.Configuration;
 import com.subcherry.PortingTickets;
+import com.subcherry.utils.Utils.TicketMessage;
 
 public class NoMessageRewrite extends MessageRewriter {
 
@@ -27,7 +28,7 @@ public class NoMessageRewrite extends MessageRewriter {
 	}
 
 	@Override
-	public String getMergeMessage(String logEntryMessage, long originalRevision) {
-		return logEntryMessage;
+	protected String getMergeMessage(long originalRevision, TicketMessage message) {
+		return message.getLogEntryMessage();
 	}
 }

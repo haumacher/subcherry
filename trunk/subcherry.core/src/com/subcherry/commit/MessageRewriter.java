@@ -53,13 +53,13 @@ public class MessageRewriter {
 		return getMergeMessage(logEntry.getMessage(), logEntry.getRevision());
 	}
 
-	public String getMergeMessage(String logEntryMessage, long originalRevision) {
+	public final String getMergeMessage(String logEntryMessage, long originalRevision) {
 		TicketMessage message = new TicketMessage(originalRevision, logEntryMessage, this);
 	
 		return message.getMergeMessage();
 	}
 
-	private String getMergeMessage(long originalRevision, TicketMessage message) {
+	protected String getMergeMessage(long originalRevision, TicketMessage message) {
 		StringBuilder newMesssage = new StringBuilder();
 		newMesssage.append("Ticket #");
 		newMesssage.append(message.ticketNumber);

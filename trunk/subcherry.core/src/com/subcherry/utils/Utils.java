@@ -64,6 +64,10 @@ public class Utils {
 			return matcher.group(Utils.PORTED_FROM_GROUP) != null;
 		}
 
+		public String getLogEntryMessage() {
+			return _commitMessage;
+		}
+
 		public String getMergeMessage() {
 			return _messageRewriter.getMergeMessage(_commitMessage, _originalRevision);
 		}
