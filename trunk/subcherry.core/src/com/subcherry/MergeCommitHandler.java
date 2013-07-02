@@ -66,7 +66,7 @@ public class MergeCommitHandler {
 
 	private int _doneRevs;
 	
-	private UpdateableRevisionRewriter _revisionRewrite = new UpdateableRevisionRewriter();
+	private final UpdateableRevisionRewriter _revisionRewrite = new UpdateableRevisionRewriter();
 
 	public MergeCommitHandler(MergeHandler mergeHandler, SVNClientManager clientManager, Configuration config) {
 		this._mergeHandler = mergeHandler;
