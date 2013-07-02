@@ -37,4 +37,11 @@ public class CommitSet {
 		return getCommit().getDescription();
 	}
 
+	public Commit getCommit(long joinedRevision) {
+		if (getCommit().getLogEntry().getRevision() == joinedRevision) {
+			return getCommit();
+		}
+		return null;
+	}
+
 }

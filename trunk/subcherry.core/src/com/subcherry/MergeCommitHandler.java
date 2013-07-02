@@ -226,8 +226,9 @@ public class MergeCommitHandler {
 
 	private Commit getEntry(long joinedRevision) {
 		for (CommitSet commitSet : _commitSets) {
-			if (commitSet.getCommit().getLogEntry().getRevision() == joinedRevision) {
-				return commitSet.getCommit();
+			Commit commit = commitSet.getCommit(joinedRevision);
+			if (commit != null) {
+				return commit;
 			}
 		}
 		return null;
