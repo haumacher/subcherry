@@ -201,17 +201,16 @@ public class MergeCommitHandler {
 				}
 				if (input.startsWith(joinCommand)) {
 					long joinedRevision = Long.parseLong(input.substring(joinCommand.length()));
-					CommitSet joinedCommitSet = getEntry(joinedRevision);
-					if (joinedCommitSet == null) {
+					Commit joinedCommit = getEntry(joinedRevision);
+					if (joinedCommit == null) {
 						System.err.println("Revision [" + joinedRevision + "] is not part of this merge.");
 						continue;
 					}
 					joinedRevisions.add(joinedRevision);
 					
-					Commit joinedCommit = joinedCommitSet.getCommit();
 					commit.join(joinedCommit);
 					
-					merge(commit, joinedCommitSet.getCommit().getLogEntry());
+					merge(commit, joinedCommit.getLogEntry());
 					return true;
 				}
 				if (stopCommand.equals(input)) {
@@ -225,10 +224,10 @@ public class MergeCommitHandler {
 		}
 	}
 
-	private CommitSet getEntry(long joinedRevision) {
-		for (CommitSet entry : _commitSets) {
-			if (entry.getCommit().getLogEntry().getRevision() == joinedRevision) {
-				return entry;
+	private Commit getEntry(long joinedRevision) {
+		for (CommitSet commitSet : _commitSets) {
+			if (commitSet.getCommit().getLogEntry().getRevision() == joinedRevision) {
+				return commitSet.getCommit();
 			}
 		}
 		return null;
