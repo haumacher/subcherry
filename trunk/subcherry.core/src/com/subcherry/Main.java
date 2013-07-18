@@ -108,7 +108,7 @@ public class Main {
 		for (CommitSet commitSet : commitSets) {
 			commitSet.print(System.out);
 		}
-		Log.info("Start merging " + logEntryMatcher.getEntries() + " revisions.");
+		Log.info("Start merging " + logEntryMatcher.getEntries().size() + " revisions.");
 
 		mergeCommitHandler.run(commitSets);
 
