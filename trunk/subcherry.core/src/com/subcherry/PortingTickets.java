@@ -49,6 +49,8 @@ public class PortingTickets {
 	}
 
 	private Map<String, PortType> getAdditionalTickets() {
+		PortType defaultPortType = getPortType();
+
 		String[] additionalTicketSpec = _config.getAdditionalTickets();
 		Map<String, PortType> result = new HashMap<String, PortType>();
 		for (String spec : additionalTicketSpec) {
@@ -58,7 +60,7 @@ public class PortingTickets {
 				String portTypeSpec = matcher.group(2);
 				PortType portType;
 				if (portTypeSpec == null) {
-					portType = PortType.PORT;
+					portType = defaultPortType;
 				} else {
 					portType = PortType.valueOf(portTypeSpec.toUpperCase());
 					if (portType == null) {
