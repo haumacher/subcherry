@@ -108,7 +108,7 @@ public class MergeCommitHandler {
 	}
 
 	private int getTotalRevs(List<CommitSet> commitSets) {
-		int result = commitSets.size();
+		int result = 0;
 		for (CommitSet commitSet : commitSets) {
 			result += commitSet.getCommits().size();
 		}
