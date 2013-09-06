@@ -19,6 +19,6 @@ package com.subcherry;
 
 public enum PortType {
 
-	REBASE, HOTFIX, PREVIEW, PORT, REVERT
+	REBASE, HOTFIX, PREVIEW, PORT, REVERT, NO_PORT_MESSAGE
 
 }

@@ -89,7 +89,7 @@ public class MessageRewriter {
 			addPreview(newMesssage);
 		} 
 		else {
-			if (!shouldRevert(message.ticketNumber)) {
+			if (!shouldRevert(message.ticketNumber) && !shouldOriginalCommit(message.ticketNumber)) {
 				addPort(newMesssage);
 			}
 		}
@@ -137,6 +137,10 @@ public class MessageRewriter {
 
 	private boolean shouldRebase(String ticketNumber) {
 		return getPortType(ticketNumber) == PortType.REBASE;
+	}
+
+	private boolean shouldOriginalCommit(String ticketNumber) {
+		return getPortType(ticketNumber) == PortType.NO_PORT_MESSAGE;
 	}
 
 	private PortType getPortType(String ticketNumber) {
