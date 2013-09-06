@@ -224,7 +224,11 @@ public class MergeCommitHandler {
 					continue;
 				}
 				if (apiCommand.equals(input)) {
-					Pattern apiChangeInsertPattern = Pattern.compile("^(Ticket #\\d+: Ported to [^ ]+(?: from [^:]+)?: )(.*)$", Pattern.DOTALL);
+					String portedTo = "Ported to [^ ]+(?: from [^:]+)?: ";
+					String previewOn = "Preview on [^ ]+: ";
+					String mergeReason = "(?:" + portedTo + '|' + previewOn + ')';
+					Pattern apiChangeInsertPattern =
+						Pattern.compile("^(Ticket #\\d+: " + mergeReason + ")(.*)$", Pattern.DOTALL);
 					Matcher matcher = apiChangeInsertPattern.matcher(commit.getCommitMessage());
 					if (! matcher.matches()) {
 						System.err.println("Message could not be parsed to insert API change flag.");
