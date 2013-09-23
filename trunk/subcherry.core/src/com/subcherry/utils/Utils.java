@@ -159,7 +159,7 @@ public class Utils {
 	}
 
 	private static String followUpRevisionPrefix() {
-		return messagePart("Follow-up (?:\\d+ )?for \\[" + group(FOLLOW_UP_GROUP = group, "\\d+") + "\\]");
+		return messagePart("(?:Follow-up|Bugfix) (?:\\d+ )?for \\[" + group(FOLLOW_UP_GROUP = group, "\\d+") + "\\]");
 	}
 
 	private static String mergeRevisionPrefix() {
