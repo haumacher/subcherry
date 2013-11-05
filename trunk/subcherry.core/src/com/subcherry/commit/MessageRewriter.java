@@ -124,7 +124,7 @@ public class MessageRewriter {
 	}
 
 	private boolean shouldRevert(String ticketNumber) {
-		return getPortType(ticketNumber) == PortType.REVERT;
+		return _config.getRevert();
 	}
 
 	private boolean shouldPreview(String ticketNumber) {

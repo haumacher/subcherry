@@ -93,9 +93,6 @@ public class PortingTickets {
 		if (_config.getRebase()) {
 			return PortType.REBASE;
 		}
-		if (_config.getRevert()) {
-			return PortType.REVERT;
-		}
 		if (_config.getPreview()) {
 			return PortType.PREVIEW;
 		}
