@@ -96,7 +96,7 @@ public class Main {
 		SVNLogEntryMatcher logEntryMatcher = newLogEntryMatcher(trac, portingTickets);
 		CommitHandler commitHandler = newCommitHandler(messageRewriter);
 		SVNURL url = SVNURL.parseURIDecoded(_config.getSvnURL());
-		String[] paths = {_config.getSourceBranch()};
+		String[] paths = getLogPaths();
 
 		logClient.doLog(url, paths, pegRevision, startRevision, endRevision, stopOnCopy, discoverChangedPaths, limit,
 				logEntryMatcher);
@@ -113,6 +113,29 @@ public class Main {
 		mergeCommitHandler.run(commitSets);
 
 		Restart.clear();
+	}
+
+	private static String[] getLogPaths() {
+		String[] paths = new String[_modules.size() + 1];
+
+		// Add paths for each concrete module: This is done because the module could have been
+		// copied to the branch. In this case the changes in the module before copy time are not
+		// logged for the whole branch, but for the concrete module.
+		int i = 0;
+		StringBuilder path = new StringBuilder();
+		for (String module : _modules) {
+			path.append(_config.getSourceBranch());
+			if (path.charAt(path.length() - 1) != '/')
+				path.append('/');
+			path.append(module);
+			paths[i++] = path.toString();
+			path.setLength(0);
+		}
+
+		// Add also whole branch to get changes like deletion or copying of modules which are not
+		// logged for the module itself.
+		paths[i] = _config.getSourceBranch();
+		return paths;
 	}
 
 	private static void reorderCommits(List<CommitSet> commitSets) {
