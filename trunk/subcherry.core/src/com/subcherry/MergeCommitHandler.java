@@ -138,7 +138,7 @@ public class MergeCommitHandler {
 			return;
 		}
 		
-		boolean commitAproval = _stopOnRevisions.contains(merge.revision);
+		boolean commitAproval = _autoCommit && !_stopOnRevisions.contains(merge.revision);
 		
 		System.out.println("Revision " + logEntry.getRevision() + " (" + _doneRevs + " of " + _totalRevs + "): "
 			+ encode(logEntry.getMessage()));
@@ -165,7 +165,7 @@ public class MergeCommitHandler {
 			if (_commitContext == null) {
 				Log.info("Revision '" + logEntry.getRevision() + "' applied but not committed.");
 			} else {
-				if (!_autoCommit && !commitAproval) {
+				if (!commitAproval) {
 					InputResult result = queryCommit(commit, "commit");
 					switch (result) {
 						case SKIP:
