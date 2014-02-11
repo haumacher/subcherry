@@ -53,6 +53,8 @@ public interface Configuration extends Value {
 
 	Long[] getAdditionalRevisions();
 
+	Long[] getStopOnRevisions();
+
 	String[] getAdditionalTickets();
 	
 	String getTicketQuery();

@@ -82,6 +82,8 @@ public class MergeCommitHandler {
 	
 	private final UpdateableRevisionRewriter _revisionRewrite = new UpdateableRevisionRewriter();
 
+	private Set<Long> _stopOnRevisions;
+
 	public MergeCommitHandler(MergeHandler mergeHandler, SVNClientManager clientManager, Configuration config) {
 		this._mergeHandler = mergeHandler;
 		this._diffClient = clientManager.getDiffClient();
@@ -92,6 +94,7 @@ public class MergeCommitHandler {
 		}
 		this._mergeContext = new MergeContext(_diffClient, config);
 		_autoCommit = config.getAutoCommit();
+		_stopOnRevisions = new HashSet<Long>(Arrays.asList(config.getStopOnRevisions()));
 	}
 
 	public void run(List<CommitSet> commitSets) throws SVNException {
@@ -135,7 +138,7 @@ public class MergeCommitHandler {
 			return;
 		}
 		
-		boolean commitAproval = false;
+		boolean commitAproval = _stopOnRevisions.contains(merge.revision);
 		
 		System.out.println("Revision " + logEntry.getRevision() + " (" + _doneRevs + " of " + _totalRevs + "): "
 			+ encode(logEntry.getMessage()));
