@@ -49,7 +49,7 @@ public class CommitSet {
 
 	public void print(PrintStream out) {
 		for (Commit commit : _commits) {
-			System.out.println(commit.getDescription());
+			out.println(commit.getDescription());
 		}
 	}
 
