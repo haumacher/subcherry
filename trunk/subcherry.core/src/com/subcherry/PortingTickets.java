@@ -54,7 +54,7 @@ public class PortingTickets {
 		String[] additionalTicketSpec = _config.getAdditionalTickets();
 		Map<String, PortType> result = new HashMap<String, PortType>();
 		for (String spec : additionalTicketSpec) {
-			Pattern pattern = Pattern.compile("(?:\\#)?(\\d+)(?:\\(([^\\)]+)\\))?");
+			Pattern pattern = Pattern.compile("(?:\\#)?(\\d+)\\s*(?:\\(([^\\)]+)\\))?");
 			Matcher matcher = pattern.matcher(spec);
 			if (matcher.matches()) {
 				String portTypeSpec = matcher.group(2);
