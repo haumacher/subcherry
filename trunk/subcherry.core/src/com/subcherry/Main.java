@@ -18,6 +18,8 @@ import org.tmatesoft.svn.core.SVNLogEntry;
 import org.tmatesoft.svn.core.SVNURL;
 import org.tmatesoft.svn.core.auth.ISVNAuthenticationManager;
 import org.tmatesoft.svn.core.internal.wc.DefaultSVNOptions;
+import org.tmatesoft.svn.core.internal.wc.SVNDiffConflictChoiceStyle;
+import org.tmatesoft.svn.core.wc.ISVNMerger;
 import org.tmatesoft.svn.core.wc.SVNClientManager;
 import org.tmatesoft.svn.core.wc.SVNLogClient;
 import org.tmatesoft.svn.core.wc.SVNRevision;
@@ -28,6 +30,7 @@ import com.subcherry.commit.CommitHandler;
 import com.subcherry.commit.MessageRewriter;
 import com.subcherry.commit.RevisionRewriter;
 import com.subcherry.log.DirCollector;
+import com.subcherry.merge.ContentSensitiveMerger;
 import com.subcherry.merge.MergeHandler;
 import com.subcherry.trac.TracConnection;
 import com.subcherry.utils.Log;
@@ -251,7 +254,13 @@ public class Main {
 	public static SVNClientManager newSVNClientManager() throws IOException {
 		LoginCredential svnCredentials = PropertiesUtil.load("conf/loginCredentials.properties", "svn.",
 				LoginCredential.class);
-		DefaultSVNOptions options = new DefaultSVNOptions();
+		DefaultSVNOptions options = new DefaultSVNOptions() {
+			@Override
+			public ISVNMerger createMerger(byte[] conflictStart, byte[] conflictSeparator, byte[] conflictEnd) {
+				return new ContentSensitiveMerger(conflictStart, conflictSeparator, conflictEnd, getConflictResolver(),
+					SVNDiffConflictChoiceStyle.CHOOSE_MODIFIED_LATEST);
+			}
+		};
 		ISVNAuthenticationManager authManager = SVNWCUtil.createDefaultAuthenticationManager(svnCredentials.getUser(),
 				svnCredentials.getPasswd());
 		return SVNClientManager.newInstance(options, authManager);
