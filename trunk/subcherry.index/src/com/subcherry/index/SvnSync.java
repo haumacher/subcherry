@@ -70,9 +70,9 @@ public class SvnSync {
 		
 		class Handler implements ISVNLogEntryHandler, Closeable {
 			
-			private SvnIndexInsert _index;
+			private IndexBuilder _index;
 
-			public Handler(SvnIndexInsert index) throws SQLException {
+			public Handler(IndexBuilder index) throws SQLException {
 				_index = index;
 			}
 
@@ -99,7 +99,7 @@ public class SvnSync {
 		boolean discoverChangedPaths = true;
 
 		new DBReset(_connection).run();
-		SvnIndexInsert index = new SvnIndexInsert(_connection);
+		IndexBuilder index = new IndexBuilder(_connection);
 		Handler handler = new Handler(index);
 		logClient.doLog(rootUrl, paths, pegRevision, startRevision, endRevision, false, discoverChangedPaths, true,
 			0, NO_PROPERTIES, handler);

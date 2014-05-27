@@ -37,7 +37,7 @@ import org.tmatesoft.svn.core.SVNLogEntry;
 import org.tmatesoft.svn.core.SVNLogEntryPath;
 import org.tmatesoft.svn.core.SVNNodeKind;
 
-public class SvnIndexInsert implements Closeable, Flushable {
+public class IndexBuilder implements Closeable, Flushable {
 
 	private static final Comparator<SVNLogEntryPath> PATH_ORDER = new Comparator<SVNLogEntryPath>() {
 		@Override
@@ -72,7 +72,7 @@ public class SvnIndexInsert implements Closeable, Flushable {
 
 	private Set<Node> _deletions = new HashSet<>();
 
-	public SvnIndexInsert(Connection connection) throws SQLException {
+	public IndexBuilder(Connection connection) throws SQLException {
 		_connection = connection;
 		_pathLookup = new PathLookup(connection);
 		_childrenLookup = new ChildrenLookup(connection);
