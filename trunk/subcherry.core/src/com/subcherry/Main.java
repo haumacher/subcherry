@@ -1,5 +1,7 @@
 package com.subcherry;
 
+import static com.subcherry.Globals.*;
+
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
@@ -55,13 +57,9 @@ public class Main {
 	 */
 	private static final long NO_LIMIT = 0; // 0 means all
 
-	private static Configuration _config;
-
 	private static Set<String> _modules;
 
 	public static void main(String[] args) throws IOException, SVNException {
-		installConfiguration();
-
 		LoginCredential tracCredentials = PropertiesUtil.load("conf/loginCredentials.properties", "trac.",
 				LoginCredential.class);
 
@@ -69,8 +67,8 @@ public class Main {
 	}
 
 	public static void doMerge(LoginCredential tracCredentials) throws SVNException, IOException {
-		SVNRevision startRevision = _config.getRevert() ? getEndRevision() : getStartRevision();
-		SVNRevision endRevision = _config.getRevert() ? getStartRevision() : getEndRevision();
+		SVNRevision startRevision = config().getRevert() ? getEndRevision() : getStartRevision();
+		SVNRevision endRevision = config().getRevert() ? getStartRevision() : getEndRevision();
 		SVNRevision pegRevision = getPegRevision(startRevision);
 		boolean stopOnCopy = false;
 		boolean discoverChangedPaths = true;
@@ -78,34 +76,34 @@ public class Main {
 		SVNClientManager clientManager = newSVNClientManager();
 		SVNLogClient logClient = clientManager.getLogClient();
 		
-		SVNURL sourceBranchUrl = SVNURL.parseURIDecoded(_config.getSvnURL() + Utils.SVN_SERVER_PATH_SEPARATOR + _config.getSourceBranch());
-		SVNURL targetBranchUrl = SVNURL.parseURIDecoded(_config.getSvnURL() + Utils.SVN_SERVER_PATH_SEPARATOR + _config.getTargetBranch());
-		if (_config.getDetectCommonModules() || _config.getModules().length == 0) {
-			_modules = DirCollector.getBranchModules(logClient, _config.getModules(), sourceBranchUrl, pegRevision);
+		SVNURL sourceBranchUrl = SVNURL.parseURIDecoded(config().getSvnURL() + Utils.SVN_SERVER_PATH_SEPARATOR + config().getSourceBranch());
+		SVNURL targetBranchUrl = SVNURL.parseURIDecoded(config().getSvnURL() + Utils.SVN_SERVER_PATH_SEPARATOR + config().getTargetBranch());
+		if (config().getDetectCommonModules() || config().getModules().length == 0) {
+			_modules = DirCollector.getBranchModules(logClient, config().getModules(), sourceBranchUrl, pegRevision);
 		} else {
-			_modules = new HashSet<String>(Arrays.asList(_config.getModules()));
+			_modules = new HashSet<String>(Arrays.asList(config().getModules()));
 		}
 		_modules.retainAll(getWorkspaceModules());
 		Log.info("Merging modules: " + _modules);
 		
 		TracConnection trac = createTracConnection(tracCredentials);
-		PortingTickets portingTickets = new PortingTickets(_config, trac);
-		MergeHandler mergeHandler = new MergeHandler(_config, _modules);
+		PortingTickets portingTickets = new PortingTickets(config(), trac);
+		MergeHandler mergeHandler = new MergeHandler(config(), _modules);
 		MergeCommitHandler mergeCommitHandler =
-			new MergeCommitHandler(mergeHandler, clientManager, _config);
+			new MergeCommitHandler(mergeHandler, clientManager, config());
 		RevisionRewriter revisionRewriter = mergeCommitHandler.getRevisionRewriter();
 		MessageRewriter messageRewriter =
-			MessageRewriter.createMessageRewriter(_config, portingTickets, revisionRewriter);
+			MessageRewriter.createMessageRewriter(config(), portingTickets, revisionRewriter);
 		SVNLogEntryMatcher logEntryMatcher = newLogEntryMatcher(trac, portingTickets);
 		CommitHandler commitHandler = newCommitHandler(messageRewriter);
-		SVNURL url = SVNURL.parseURIDecoded(_config.getSvnURL());
+		SVNURL url = SVNURL.parseURIDecoded(config().getSvnURL());
 		String[] paths = getLogPaths();
 
 		logClient.doLog(url, paths, pegRevision, startRevision, endRevision, stopOnCopy, discoverChangedPaths, limit,
 				logEntryMatcher);
 		
 		List<CommitSet> commitSets = getCommitSets(commitHandler, logEntryMatcher.getEntries());
-		if (_config.getReorderCommits()) {
+		if (config().getReorderCommits()) {
 			reorderCommits(commitSets);
 		}
 		for (CommitSet commitSet : commitSets) {
@@ -127,7 +125,7 @@ public class Main {
 		int i = 0;
 		StringBuilder path = new StringBuilder();
 		for (String module : _modules) {
-			path.append(_config.getSourceBranch());
+			path.append(config().getSourceBranch());
 			if (path.charAt(path.length() - 1) != '/')
 				path.append('/');
 			path.append(module);
@@ -137,7 +135,7 @@ public class Main {
 
 		// Add also whole branch to get changes like deletion or copying of modules which are not
 		// logged for the module itself.
-		paths[i] = _config.getSourceBranch();
+		paths[i] = config().getSourceBranch();
 		return paths;
 	}
 
@@ -180,11 +178,11 @@ public class Main {
 	}
 
 	private static SVNRevision getPegRevision(SVNRevision startRevision) {
-		return getRevisionOrHead(_config.getPegRevision());
+		return getRevisionOrHead(config().getPegRevision());
 	}
 
 	private static Set<String> getWorkspaceModules() {
-		File workspaceRoot = _config.getWorkspaceRoot();
+		File workspaceRoot = config().getWorkspaceRoot();
 		if (!workspaceRoot.exists()) {
 			throw new RuntimeException("Workspace root '" + workspaceRoot.getAbsolutePath() + "' does not exist.");
 		}
@@ -209,12 +207,12 @@ public class Main {
 		if (storedRevision != Restart.NO_REVISION_FOUND) {
 			return SVNRevision.create(storedRevision);
 		} else {
-			return getRevisionOrHead(_config.getStartRevision());
+			return getRevisionOrHead(config().getStartRevision());
 		}
 	}
 
 	private static SVNRevision getEndRevision() {
-		return getRevisionOrHead(_config.getEndRevision());
+		return getRevisionOrHead(config().getEndRevision());
 	}
 
 	public static SVNRevision getRevisionOrHead(long revision) {
@@ -226,16 +224,16 @@ public class Main {
 	}
 
 	private static SVNLogEntryMatcher newLogEntryMatcher(TracConnection trac, PortingTickets portingTickets) throws MalformedURLException {
-		return new DefaultLogEntryMatcher(trac, _config, portingTickets);
+		return new DefaultLogEntryMatcher(trac, config(), portingTickets);
 	}
 
 	private static TracConnection createTracConnection(LoginCredential tracCredentials) throws MalformedURLException {
-		return new TracConnection(_config.getTracURL(), tracCredentials.getUser(),
+		return new TracConnection(config().getTracURL(), tracCredentials.getUser(),
 			tracCredentials.getPasswd());
 	}
 
 	private static CommitHandler newCommitHandler(MessageRewriter messageRewriter) {
-		return new CommitHandler(_config, _modules, messageRewriter);
+		return new CommitHandler(config(), _modules, messageRewriter);
 	}
 
 	private static String[] getPaths(Configuration config) {
@@ -264,12 +262,6 @@ public class Main {
 		ISVNAuthenticationManager authManager = SVNWCUtil.createDefaultAuthenticationManager(svnCredentials.getUser(),
 				svnCredentials.getPasswd());
 		return SVNClientManager.newInstance(options, authManager);
-	}
-
-	private static void installConfiguration() throws IOException {
-		if (_config == null) {
-			_config = PropertiesUtil.load("conf/configuration.properties", Configuration.class);
-		}
 	}
 
 }
