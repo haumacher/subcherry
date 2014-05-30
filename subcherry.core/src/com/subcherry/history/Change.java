@@ -55,11 +55,13 @@ public class Change {
 	}
 
 	public String getKey() {
-		String detailMessage = Utils.getDetailMessage(getMessage());
+		String message = getMessage();
+		String detailMessage = Utils.getDetailMessage(message);
 		if (detailMessage == null) {
-			return null;
+			return normalize(message);
+		} else {
+			return normalize(detailMessage);
 		}
-		return normalize(detailMessage);
 	}
 
 	private static String normalize(String detailMessage) {
