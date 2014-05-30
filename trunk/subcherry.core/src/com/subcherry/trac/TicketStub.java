@@ -2,7 +2,6 @@ package com.subcherry.trac;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.regex.Matcher;
 
 import com.subcherry.utils.Utils;
 
@@ -101,21 +100,23 @@ public class TicketStub extends Ticket {
 	}
 
 	public static Ticket getTicket(TracConnection trac, String message) {
-		Matcher matcher = Utils.TICKET_PATTERN.matcher(message);
-		if (matcher.matches()) {
-			String ticketId = Utils.getTicketNumber(matcher);
-		
-			Ticket cachedTicket = tickets.get(ticketId);
-			if (cachedTicket != null) {
-				return cachedTicket;
-			}
-			
-			Ticket newTicket = new TicketStub(ticketId, trac);
-			tickets.put(message, newTicket);
-			return newTicket;
+		String ticketId = Utils.getTicketId(message);
+		if (ticketId != null) {
+			return fetchTicket(trac, message, ticketId);
 		} else {
 			return NO_TICKET;
 		}
+	}
+
+	private static Ticket fetchTicket(TracConnection trac, String message, String ticketId) {
+		Ticket cachedTicket = tickets.get(ticketId);
+		if (cachedTicket != null) {
+			return cachedTicket;
+		}
+		
+		Ticket newTicket = new TicketStub(ticketId, trac);
+		tickets.put(message, newTicket);
+		return newTicket;
 	}
 
 	private static Map<Integer, TracTicket> tracTickets = new HashMap<Integer, TracTicket>();

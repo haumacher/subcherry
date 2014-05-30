@@ -246,5 +246,14 @@ public class Utils {
 		return s == null || s.isEmpty();
 	}
 
+	public static String getTicketId(String message) {
+		Matcher matcher = TICKET_PATTERN.matcher(message);
+		if (matcher.matches()) {
+			return getTicketNumber(matcher);
+		} else {
+			return null;
+		}
+	}
+
 }
 
