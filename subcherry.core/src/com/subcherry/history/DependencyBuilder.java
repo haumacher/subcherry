@@ -89,20 +89,23 @@ public class DependencyBuilder {
 
 	private Map<Change, Dependency> _dependencies = new HashMap<>();
 
-	public DependencyBuilder(String sourceBranch, String targetBranch) {
+	private Set<String> _modules;
+
+	public DependencyBuilder(String sourceBranch, String targetBranch, Set<String> modules) {
 		_sourceBranch = sourceBranch;
 		_targetBranch = targetBranch;
+		_modules = modules;
 	}
 
-	public void analyzeConflicts(History sourceHistory, History targetHistory, List<SVNLogEntry> sourceLog) {
+	public void analyzeConflicts(History sourceHistory, History targetHistory, List<SVNLogEntry> mergeLog) {
 		Map<Long, Change> mergedChanges = new HashMap<>();
-		Set<String> mergedPaths = new HashSet<>();
-		for (SVNLogEntry logEntry : sourceLog) {
-			mergedPaths.addAll(logEntry.getChangedPaths().keySet());
+		for (SVNLogEntry logEntry : mergeLog) {
 			Change change = sourceHistory.getChange(logEntry.getRevision());
 			mergedChanges.put(change.getRevision(), change);
 		}
 
+		String sourcePrefix = _sourceBranch + "/";
+		int sourcePrefixLength = sourcePrefix.length();
 		for (Node node : sourceHistory.getTouchedNodes()) {
 			if (node.getKind() != Kind.FILE) {
 				// Conflicts are only relevant on files, not directories. On directories, only
@@ -111,13 +114,20 @@ public class DependencyBuilder {
 				continue;
 			}
 
-			if (!mergedPaths.contains(node.getPath())) {
+			String path = node.getPath();
+			if (!path.startsWith(sourcePrefix)) {
 				continue;
 			}
 
-			String path = node.getPath();
-			if (!path.startsWith(_sourceBranch)) {
-				continue;
+			if (_modules != null) {
+				int moduleEndIndex = path.indexOf('/', sourcePrefixLength);
+				if (moduleEndIndex < 0) {
+					moduleEndIndex = path.length();
+				}
+				String module = path.substring(sourcePrefixLength, moduleEndIndex);
+				if (!_modules.contains(module)) {
+					continue;
+				}
 			}
 
 			String targetPath = _targetBranch + path.substring(_sourceBranch.length());
