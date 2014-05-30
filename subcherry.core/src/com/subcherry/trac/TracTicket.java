@@ -70,6 +70,74 @@ public class TracTicket {
         this.attributes = someAttr;
     }
     
+	public Integer getNumber() {
+		return number;
+	}
+
+	public Date getCreated() {
+		return created;
+	}
+
+	public Date getModified() {
+		return modified;
+	}
+
+	public String getCc() {
+		return (String) attributes.get(TICKET_ATT_CC);
+	}
+
+	public String getComponent() {
+		return (String) attributes.get(TICKET_ATT_COMPONENT);
+	}
+
+	public String getDescription() {
+		return (String) attributes.get(TICKET_ATT_DESCRIPTION);
+	}
+
+	public String getImplementedIn() {
+		return (String) attributes.get(TICKET_ATT_IMPLEMENTED_IN);
+	}
+
+	public String getKeyword() {
+		return (String) attributes.get(TICKET_ATT_KEYWORD);
+	}
+
+	public String getMilestone() {
+		return (String) attributes.get(TICKET_ATT_MILESTONE);
+	}
+
+	public String getOwner() {
+		return (String) attributes.get(TICKET_ATT_OWNER);
+	}
+
+	public String getPriority() {
+		return (String) attributes.get(TICKET_ATT_PRIORITY);
+	}
+
+	public String getReporter() {
+		return (String) attributes.get(TICKET_ATT_REPORTER);
+	}
+
+	public String getResolution() {
+		return (String) attributes.get(TICKET_ATT_RESOLUTION);
+	}
+
+	public String getStatus() {
+		return (String) attributes.get(TICKET_ATT_STATUS);
+	}
+
+	public String getSummary() {
+		return (String) attributes.get(TICKET_ATT_SUMMARY);
+	}
+
+	public String getType() {
+		return (String) attributes.get(TICKET_ATT_TYPE);
+	}
+
+	public String getVersion() {
+		return (String) attributes.get(TICKET_ATT_VERSION);
+	}
+
     public String[] getAttributeNames() {
         return TICKET_ATTS;
     }
