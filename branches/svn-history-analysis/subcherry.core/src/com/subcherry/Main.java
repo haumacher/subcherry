@@ -178,6 +178,7 @@ public class Main {
 				mkList(requiredTickets, ticketId).add(change);
 			}
 
+			System.out.println("= Conflict Report =");
 			for (String ticketId : keysSorted(requiredTickets)) {
 				if (ticketId.equals(NO_TICKET_ID)) {
 					System.out.println("== Without ticket ==");

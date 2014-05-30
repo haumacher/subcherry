@@ -23,6 +23,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.subcherry.history.Node.Kind;
+
 public class History {
 
 	private Map<Long, Change> _changesByRevision = new HashMap<>();
@@ -49,7 +51,7 @@ public class History {
 		return result;
 	}
 
-	public void addedNode(String path, Change change, String copyPath, long copyRevision) {
+	public void addedNode(Kind kind, String path, Change change, String copyPath, long copyRevision) {
 		Node existingNode = getLatestNode(path);
 		if (existingNode != null && existingNode.isAlive()) {
 			// If not the complete history is read (filtered for some paths), it is possible that a
@@ -59,15 +61,15 @@ public class History {
 			markDeleted(existingNode, change);
 		}
 
-		Node node = createCurrentNode(path, change.getRevision());
+		Node node = createCurrentNode(kind, path, change.getRevision());
 		node.modify(change);
 
 		if (copyPath != null) {
-			Node copyNode = lookupNode(copyPath, copyRevision);
+			Node copyNode = lookupNode(kind, copyPath, copyRevision);
 			if (copyNode == null) {
 				if (_startRevision > Node.FIRST) {
 					// History was not recorded for that revision, create a phantom node.
-					copyNode = mkHistoricNode(copyPath, Node.SINCE_EVER, copyRevision);
+					copyNode = mkHistoricNode(kind, copyPath, Node.SINCE_EVER, copyRevision);
 
 					// Extends the live-time of the phantom node to the maximum possible.
 					if (copyNode.getLater() == null) {
@@ -83,13 +85,13 @@ public class History {
 		}
 	}
 
-	public void modifiedNode(String path, Change change) {
-		Node node = mkCurrentNode(path, change.getRevision());
+	public void modifiedNode(Kind kind, String path, Change change) {
+		Node node = mkCurrentNode(kind, path, change.getRevision());
 		node.modify(change);
 	}
 
-	public void deletedNode(String path, Change change) {
-		Node node = mkCurrentNode(path, change.getRevision());
+	public void deletedNode(Kind kind, String path, Change change) {
+		Node node = mkCurrentNode(kind, path, change.getRevision());
 		markDeleted(node, change);
 	}
 
@@ -104,23 +106,23 @@ public class History {
 		}
 	}
 
-	Node mkCurrentNode(String path, long revision) {
-		Node node = getCurrentNode(path);
+	Node mkCurrentNode(Kind kind, String path, long revision) {
+		Node node = getCurrentNode(kind, path);
 		if (node != null) {
 			return node;
 		}
-		return createCurrentNode(path, revision);
+		return createCurrentNode(kind, path, revision);
 	}
 
-	public Node getCurrentNode(String path) {
-		Node node = lookupNode(path, Node.HEAD);
+	public Node getCurrentNode(Kind kind, String path) {
+		Node node = lookupNode(kind, path, Node.HEAD);
 		if (node == null || !node.isAlive()) {
 			return null;
 		}
 		return node;
 	}
 
-	private Node lookupNode(String path, long revision) {
+	private Node lookupNode(Kind kind, String path, long revision) {
 		Node node = getLatestNode(path);
 		if (node != null) {
 			Node inRevision = backToRevision(node, revision);
@@ -136,7 +138,7 @@ public class History {
 		}
 	
 		String parentPath = path.substring(0, dirSeparatorIndex);
-		Node parentNode = lookupNode(parentPath, revision);
+		Node parentNode = lookupNode(kind, parentPath, revision);
 		if (parentNode == null) {
 			// No parent path, the original path is not found at all.
 			return null;
@@ -152,13 +154,13 @@ public class History {
 			return null;
 		}
 
-		Node childNode = mkHistoricNode(path, parentNode.getRevMin(), parentNode.getRevMax());
+		Node childNode = mkHistoricNode(kind, path, parentNode.getRevMin(), parentNode.getRevMax());
 		Node parentCopyNode = parentNode.getCopyNode();
 		if (parentCopyNode != null) {
 			String namePart = path.substring(dirSeparatorIndex);
 			long parentCopyRevision = parentNode.getCopyRevision();
 			String copyPath = parentCopyNode.getPath() + namePart;
-			Node copyNode = lookupNode(copyPath, parentCopyRevision);
+			Node copyNode = lookupNode(kind, copyPath, parentCopyRevision);
 
 			// Note: With an incomplete history, the copied node may not be found.
 			if (copyNode != null) {
@@ -189,24 +191,24 @@ public class History {
 		return node;
 	}
 
-	private Node createCurrentNode(String path, long revision) {
-		return createNode(path, revision, Node.HEAD);
+	private Node createCurrentNode(Kind kind, String path, long revision) {
+		return createNode(kind, path, revision, Node.HEAD);
 	}
 
-	private Node mkHistoricNode(String path, long revMin, long revMax) {
+	private Node mkHistoricNode(Kind kind, String path, long revMin, long revMax) {
 		if (revMin == Node.SINCE_EVER) {
-			Node phantomNode = lookupNode(path, Node.SINCE_EVER);
+			Node phantomNode = lookupNode(kind, path, Node.SINCE_EVER);
 			if (phantomNode != null) {
 				phantomNode.setRevMax(revMax);
 				assert phantomNode.getLater() == null || assertBefore(phantomNode, phantomNode.getLater());
 				return phantomNode;
 			}
 		}
-		return createNode(path, revMin, revMax);
+		return createNode(kind, path, revMin, revMax);
 	}
 
-	private Node createNode(String path, long revMin, long revMax) {
-		Node node = new Node(path, revMin, revMax);
+	private Node createNode(Kind kind, String path, long revMin, long revMax) {
+		Node node = new Node(kind, path, revMin, revMax);
 		enterNode(node);
 		return node;
 	}
