@@ -26,6 +26,8 @@ import org.tmatesoft.svn.core.SVNException;
 import org.tmatesoft.svn.core.SVNLogEntry;
 import org.tmatesoft.svn.core.SVNLogEntryPath;
 
+import com.subcherry.history.Node.Kind;
+
 /**
  * {@link ISVNLogEntryHandler} that creates a consolidated history of all nodes that are present in
  * the current view of a repository.
@@ -69,22 +71,23 @@ public class HistroyBuilder implements ISVNLogEntryHandler {
 			String path = pathEntry.getPath();
 
 			char changeType = pathEntry.getType();
+			Kind kind = Kind.fromSvn(pathEntry.getKind());
 			switch (changeType) {
 				case SVNLogEntryPath.TYPE_ADDED: {
-					_history.addedNode(path, change, pathEntry.getCopyPath(), pathEntry.getCopyRevision());
+					_history.addedNode(kind, path, change, pathEntry.getCopyPath(), pathEntry.getCopyRevision());
 					break;
 				}
 				case SVNLogEntryPath.TYPE_DELETED: {
-					_history.deletedNode(path, change);
+					_history.deletedNode(kind, path, change);
 					break;
 				}
 				case SVNLogEntryPath.TYPE_MODIFIED: {
-					_history.modifiedNode(path, change);
+					_history.modifiedNode(kind, path, change);
 					break;
 				}
 				case SVNLogEntryPath.TYPE_REPLACED: {
-					_history.deletedNode(path, change);
-					_history.addedNode(path, change, pathEntry.getCopyPath(), pathEntry.getCopyRevision());
+					_history.deletedNode(kind, path, change);
+					_history.addedNode(kind, path, change, pathEntry.getCopyPath(), pathEntry.getCopyRevision());
 					break;
 				}
 			}

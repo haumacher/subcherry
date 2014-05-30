@@ -28,6 +28,8 @@ import java.util.Set;
 
 import org.tmatesoft.svn.core.SVNLogEntry;
 
+import com.subcherry.history.Node.Kind;
+
 public class DependencyBuilder {
 
 	public static class Dependency {
@@ -102,6 +104,13 @@ public class DependencyBuilder {
 		}
 
 		for (Node node : sourceHistory.getTouchedNodes()) {
+			if (node.getKind() != Kind.FILE) {
+				// Conflicts are only relevant on files, not directories. On directories, only
+				// property conflicts may occur, which are most probable "conflicts" in
+				// svn:mergeinfo, which is always resolved automatically.
+				continue;
+			}
+
 			if (!mergedPaths.contains(node.getPath())) {
 				continue;
 			}
@@ -112,7 +121,7 @@ public class DependencyBuilder {
 			}
 
 			String targetPath = _targetBranch + path.substring(_sourceBranch.length());
-			Node targetNode = targetHistory.getCurrentNode(targetPath);
+			Node targetNode = targetHistory.getCurrentNode(node.getKind(), targetPath);
 
 			Map<String, Change> targetChanges;
 			if (targetNode == null) {

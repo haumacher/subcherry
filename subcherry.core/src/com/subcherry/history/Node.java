@@ -21,13 +21,31 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import org.tmatesoft.svn.core.SVNNodeKind;
+
 public class Node {
+
+	public enum Kind {
+		DIR, FILE, UNKNOWN;
+
+		public static Kind fromSvn(SVNNodeKind kind) {
+			if (kind == SVNNodeKind.DIR) {
+				return DIR;
+			} else if (kind == SVNNodeKind.FILE) {
+				return FILE;
+			} else {
+				return UNKNOWN;
+			}
+		}
+	}
 
 	public static final long SINCE_EVER = 0;
 
 	public static final long FIRST = 1;
 
 	public static final long HEAD = Long.MAX_VALUE;
+
+	private final Kind _kind;
 
 	private final String _path;
 
@@ -51,15 +69,15 @@ public class Node {
 
 	private long _copyRevision;
 
-	public Node(String path, long revMin, long revMax) {
+	public Node(Kind kind, String path, long revMin, long revMax) {
+		_kind = kind;
 		_path = path;
 		_revMin = revMin;
 		_revMax = revMax;
 	}
 
-	public void modify(Change change) {
-		assert isAlive();
-		addChange(change);
+	public Kind getKind() {
+		return _kind;
 	}
 
 	public String getPath() {
@@ -80,7 +98,7 @@ public class Node {
 		if (_copyNode != null) {
 			_copyNode.addChangesUpTo(result, _copyRevision);
 		}
-
+	
 		for (Change change : _changes) {
 			if (change.getRevision() <= revision) {
 				result.add(change);
@@ -88,8 +106,20 @@ public class Node {
 		}
 	}
 
+	public long getRevMin() {
+		return _revMin;
+	}
+
 	public boolean isAlive() {
 		return _revMax == HEAD;
+	}
+
+	public long getRevMax() {
+		return _revMax;
+	}
+
+	public void setRevMax(long revMax) {
+		_revMax = revMax;
 	}
 
 	public Node getBefore() {
@@ -109,26 +139,12 @@ public class Node {
 		_later = later;
 	}
 
-	public void delete(Change change) {
-		assert isAlive() : "Delete of deleted node.";
-		setRevMax(change.getRevision() - 1);
-		addChange(change);
+	public Node getCopyNode() {
+		return _copyNode;
 	}
 
-	private void addChange(Change change) {
-		_changes.add(change);
-	}
-
-	public long getRevMin() {
-		return _revMin;
-	}
-
-	public void setRevMax(long revMax) {
-		_revMax = revMax;
-	}
-
-	public long getRevMax() {
-		return _revMax;
+	public long getCopyRevision() {
+		return _copyRevision;
 	}
 
 	public void setCopyFrom(Node copyNode, long copyRevision) {
@@ -137,12 +153,19 @@ public class Node {
 		_copyRevision = copyRevision;
 	}
 
-	public Node getCopyNode() {
-		return _copyNode;
+	public void modify(Change change) {
+		assert isAlive();
+		addChange(change);
 	}
 
-	public long getCopyRevision() {
-		return _copyRevision;
+	public void delete(Change change) {
+		assert isAlive() : "Delete of deleted node.";
+		setRevMax(change.getRevision() - 1);
+		addChange(change);
+	}
+
+	private void addChange(Change change) {
+		_changes.add(change);
 	}
 
 	@Override

@@ -34,6 +34,7 @@ import org.tmatesoft.svn.core.SVNLogEntryPath;
 import com.subcherry.history.Change;
 import com.subcherry.history.HistroyBuilder;
 import com.subcherry.history.Node;
+import com.subcherry.history.Node.Kind;
 
 /**
  * Test case for {@link HistroyBuilder}.
@@ -241,7 +242,7 @@ public class TestHistroyBuilder extends TestCase {
 	}
 
 	private Node getNode(String path) {
-		Node node = _builder.getHistory().getCurrentNode(path);
+		Node node = _builder.getHistory().getCurrentNode(Kind.UNKNOWN, path);
 		return node;
 	}
 
