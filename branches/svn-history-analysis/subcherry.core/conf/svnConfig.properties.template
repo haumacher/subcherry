@@ -1,0 +1,18 @@
+#
+# Template for global settings.
+#
+
+#
+# The root URL of the SVN repository.
+#
+svnURL: http://your.host/your-repository-path-without-trailing-slash
+
+#
+# Regular expression that selects the ticket ID as Group 1.
+#
+ticketPattern: Ticket #(\\d+):
+
+#
+# The URL of the Trac XML-RPC handler
+#
+tracURL: http://tl/trac/login/xmlrpc

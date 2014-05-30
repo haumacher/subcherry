@@ -1,0 +1,49 @@
+# Options template for TicketsOnBranch
+
+#
+# The minimum revision.
+#
+startRevision: 1
+
+#
+# The maximum revision, or zero for HEAD.
+#
+endRevision: 0
+
+#
+# Whether to stop the search on branch creations.
+#
+stopOnCopy: true
+
+#
+# Restrict to a certain set of modules on that branch. By default, all modules on that branch are used.
+#
+#modules: \
+#com.top_logic,\
+#com.top_logic.basic
+
+branch: /branches/VW-PMT/VW-PMT_TL_Version_5_7_2_Patch_18
+
+#
+# Pattern of commit messages to ignore.
+#
+#ignorePattern: Ticket #(?:\\d+): Ported 
+
+#
+# Collection of tickets that should be ignored.
+#
+excludedTickets:\
+6519,\
+7788,\
+7807
+
+#
+# Trac query that selects tickets to ignore.
+#
+#excludedQuery:\
+#milestone=^TL_5.7.2_0&milestone=^TL_5.7.2_1&milestone=^TL_5.7.2_2&milestone=^TL_5.7.3_0&max=1000
+
+#
+# Collection of tickets to include in the result, even if no commits for that ticket are found.
+#
+#additionalTickets:\
