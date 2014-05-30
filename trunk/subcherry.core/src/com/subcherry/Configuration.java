@@ -2,7 +2,9 @@ package com.subcherry;
 
 import java.io.File;
 
+import de.haumacher.common.config.Parser;
 import de.haumacher.common.config.Value;
+import de.haumacher.common.config.annotate.ValueParser;
 
 /**
  * @version $Revision$ $Author$ $Date$
@@ -20,8 +22,10 @@ public interface Configuration extends Value {
 
 	String[] getModules();
 
+	@ValueParser(BranchParser.class)
 	String getSourceBranch();
 
+	@ValueParser(BranchParser.class)
 	String getTargetBranch();
 
 	File getWorkspaceRoot();
@@ -68,4 +72,34 @@ public interface Configuration extends Value {
 	String getPortMessage();
 
 	boolean getDetectCommonModules();
+
+	public class BranchParser implements Parser<String> {
+
+		@Override
+		public String parse(String text) {
+			if (text == null) {
+				return "/";
+			}
+			if (text.startsWith("/")) {
+				return text;
+			}
+			return "/" + text;
+		}
+
+		@Override
+		public String unparse(String value) {
+			return value;
+		}
+
+		@Override
+		public boolean equals(String value1, String value2) {
+			return value1.equals(value2);
+		}
+
+		@Override
+		public int hashCode(String value) {
+			return value.hashCode();
+		}
+
+	}
 }
