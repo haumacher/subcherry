@@ -140,7 +140,7 @@ public class Main {
 		LOG.log(Level.INFO, "Analyzing dependencies.");
 		List<SVNLogEntry> mergedLogEntries = logEntryMatcher.getEntries();
 
-		DependencyBuilder dependencyBuilder = new DependencyBuilder(sourceBranch, targetBranch);
+		DependencyBuilder dependencyBuilder = new DependencyBuilder(sourceBranch, targetBranch, _modules);
 		dependencyBuilder.analyzeConflicts(sourceHistoryBuilder.getHistory(), targetHistoryBuilder.getHistory(),
 			mergedLogEntries);
 
