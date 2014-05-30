@@ -19,6 +19,8 @@ package com.subcherry.history;
 
 import java.util.Date;
 
+import com.subcherry.utils.Utils;
+
 public class Change {
 
 	private final Long _revision;
@@ -50,6 +52,23 @@ public class Change {
 
 	public String getMessage() {
 		return _message;
+	}
+
+	public String getKey() {
+		String detailMessage = Utils.getDetailMessage(getMessage());
+		if (detailMessage == null) {
+			return null;
+		}
+		return normalize(detailMessage);
+	}
+
+	private static String normalize(String detailMessage) {
+		return detailMessage
+			.replaceAll("^\\[\\d+\\]:", "")
+			.replaceAll("[^A-Za-z0-9öäüßÖÄÜ]+", " ")
+			.trim()
+			.toLowerCase()
+			.replace(' ', '_');
 	}
 
 }
