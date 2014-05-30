@@ -110,13 +110,11 @@ public class Main {
 		SVNURL url = SVNURL.parseURIDecoded(config().getSvnURL());
 
 		LOG.log(Level.INFO, "Reading source history.");
-		HistroyBuilder sourceHistoryBuilder = new HistroyBuilder();
+		HistroyBuilder sourceHistoryBuilder = new HistroyBuilder(startRevision.getNumber());
 		LogReader logReader = new LogReader(logClient, url);
 
-		// Read log in descending revision order, since the history builder requires this.
-		logReader.setStartRevision(endRevision);
-		logReader.setEndRevision(startRevision);
-
+		logReader.setStartRevision(startRevision);
+		logReader.setEndRevision(endRevision);
 		logReader.setPegRevision(pegRevision);
 		logReader.setStopOnCopy(false);
 		logReader.setDiscoverChangedPaths(true);
@@ -124,14 +122,11 @@ public class Main {
 		logReader.readLog(getLogPaths(sourceBranch), new CombinedLogEntryHandler(logEntryMatcher, sourceHistoryBuilder));
 
 		LOG.log(Level.INFO, "Reading target history.");
-		HistroyBuilder targetHistoryBuilder = new HistroyBuilder();
+		HistroyBuilder targetHistoryBuilder = new HistroyBuilder(startRevision.getNumber());
 		logReader.readLog(getLogPaths(targetBranch), targetHistoryBuilder);
 		
 		LOG.log(Level.INFO, "Analyzing dependencies.");
 		List<SVNLogEntry> mergedLogEntries = logEntryMatcher.getEntries();
-
-		// Bring revisions to merge back into merge order (ascending revision order).
-		Collections.reverse(mergedLogEntries);
 
 		DependencyBuilder dependencyBuilder = new DependencyBuilder(sourceBranch, targetBranch);
 		dependencyBuilder.analyzeConflicts(sourceHistoryBuilder.getHistory(), targetHistoryBuilder.getHistory(),

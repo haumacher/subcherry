@@ -101,12 +101,18 @@ public class DependencyBuilder {
 			mergedChanges.put(change.getRevision(), change);
 		}
 
-		// Shrink to merge scope.
-		sourceHistory.getNodesByPath().keySet().retainAll(mergedPaths);
-
 		for (Node node : sourceHistory.getTouchedNodes()) {
-			String targetPath = toTarget(node.getPath());
-			Node targetNode = targetHistory.getNode(targetPath);
+			if (!mergedPaths.contains(node.getPath())) {
+				continue;
+			}
+
+			String path = node.getPath();
+			if (!path.startsWith(_sourceBranch)) {
+				continue;
+			}
+
+			String targetPath = _targetBranch + path.substring(_sourceBranch.length());
+			Node targetNode = targetHistory.getCurrentNode(targetPath);
 
 			Map<Long, Change> targetChanges;
 			if (targetNode == null) {
@@ -151,14 +157,6 @@ public class DependencyBuilder {
 			_dependencies.put(change, result);
 		}
 		return result;
-	}
-
-	private String toTarget(String path) {
-		if (!path.startsWith(_sourceBranch)) {
-			throw new IllegalArgumentException("Path '" + path + "' is not within source branch '" + _sourceBranch
-				+ "'.");
-		}
-		return _targetBranch + path.substring(_sourceBranch.length());
 	}
 
 }
