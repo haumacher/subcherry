@@ -43,6 +43,7 @@ import com.subcherry.log.DirCollector;
 import com.subcherry.merge.ContentSensitiveMerger;
 import com.subcherry.merge.MergeHandler;
 import com.subcherry.trac.TracConnection;
+import com.subcherry.trac.TracTicket;
 import com.subcherry.utils.Log;
 import com.subcherry.utils.Utils;
 
@@ -152,17 +153,30 @@ public class Main {
 
 			ArrayList<String> requiredTicketIds = new ArrayList<>(requiredTickets.keySet());
 			Collections.sort(requiredTicketIds);
+
 			for (String ticketId : requiredTicketIds) {
 				if (ticketId.equals(NO_TICKET_ID)) {
 					System.out.println("== Without ticket ==");
 				} else {
-					System.out.println("== Ticket #" + ticketId + " ==");
+					TracTicket ticket = TracTicket.getTicket(trac, Integer.parseInt(ticketId));
+					boolean hasComponent = ticket.getComponent() != null && !ticket.getComponent().isEmpty();
+					boolean hasMilestone = ticket.getMilestone() != null && !ticket.getMilestone().isEmpty();
+					System.out.println("== Ticket #"
+						+ ticketId + " "
+						+ (hasComponent ? ticket.getComponent() : "-")
+						+ (hasMilestone ? "/" + ticket.getMilestone() : "")
+						+ ": "
+						+ ticket.getSummary() + " ("
+						+ ticket.getStatus()
+						+ (ticket.getResolution() != null && !ticket.getResolution().isEmpty() ? "/"
+							+ ticket.getResolution() : "")
+						+ ") ==");
 				}
 
 				List<Change> requiredChangesFromTicket = requiredTickets.get(ticketId);
 				Collections.sort(requiredChangesFromTicket, ChangeOrder.INSTANCE);
 				for (Change change : requiredChangesFromTicket) {
-					System.out.println("[" + change.getRevision() + "]: " + change.getMessage() + " ("
+					System.out.println("[" + change.getRevision() + "]: " + indent(change.getMessage()) + " ("
 						+ change.getAuthor() + ")");
 				}
 
@@ -184,6 +198,10 @@ public class Main {
 		mergeCommitHandler.run(commitSets);
 
 		Restart.clear();
+	}
+
+	private static String indent(String message) {
+		return message.trim().replace("\n", "\n     ");
 	}
 
 	public static <K, V> void addListIndex(Map<K, List<V>> listIndex, K key, V value) {
