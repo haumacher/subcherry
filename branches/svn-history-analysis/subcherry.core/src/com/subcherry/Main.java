@@ -9,11 +9,15 @@ import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.tmatesoft.svn.core.SVNException;
 import org.tmatesoft.svn.core.SVNLogEntry;
@@ -31,6 +35,10 @@ import com.subcherry.commit.Commit;
 import com.subcherry.commit.CommitHandler;
 import com.subcherry.commit.MessageRewriter;
 import com.subcherry.commit.RevisionRewriter;
+import com.subcherry.history.Change;
+import com.subcherry.history.DependencyBuilder;
+import com.subcherry.history.DependencyBuilder.Dependency;
+import com.subcherry.history.HistroyBuilder;
 import com.subcherry.log.DirCollector;
 import com.subcherry.merge.ContentSensitiveMerger;
 import com.subcherry.merge.MergeHandler;
@@ -57,6 +65,10 @@ public class Main {
 	 */
 	private static final long NO_LIMIT = 0; // 0 means all
 
+	private static final Logger LOG = Globals.logger(Main.class);
+
+	private static final String NO_TICKET_ID = "";
+
 	private static Set<String> _modules;
 
 	public static void main(String[] args) throws IOException, SVNException {
@@ -70,14 +82,13 @@ public class Main {
 		SVNRevision startRevision = config().getRevert() ? getEndRevision() : getStartRevision();
 		SVNRevision endRevision = config().getRevert() ? getStartRevision() : getEndRevision();
 		SVNRevision pegRevision = getPegRevision(startRevision);
-		boolean stopOnCopy = false;
-		boolean discoverChangedPaths = true;
-		long limit = NO_LIMIT;
 		SVNClientManager clientManager = newSVNClientManager();
 		SVNLogClient logClient = clientManager.getLogClient();
 		
-		SVNURL sourceBranchUrl = SVNURL.parseURIDecoded(config().getSvnURL() + Utils.SVN_SERVER_PATH_SEPARATOR + config().getSourceBranch());
-		SVNURL targetBranchUrl = SVNURL.parseURIDecoded(config().getSvnURL() + Utils.SVN_SERVER_PATH_SEPARATOR + config().getTargetBranch());
+		String sourceBranch = config().getSourceBranch();
+		SVNURL sourceBranchUrl = SVNURL.parseURIDecoded(config().getSvnURL() + Utils.SVN_SERVER_PATH_SEPARATOR + sourceBranch);
+		String targetBranch = config().getTargetBranch();
+		SVNURL targetBranchUrl = SVNURL.parseURIDecoded(config().getSvnURL() + Utils.SVN_SERVER_PATH_SEPARATOR + targetBranch);
 		if (config().getDetectCommonModules() || config().getModules().length == 0) {
 			_modules = DirCollector.getBranchModules(logClient, config().getModules(), sourceBranchUrl, pegRevision);
 		} else {
@@ -97,35 +108,117 @@ public class Main {
 		SVNLogEntryMatcher logEntryMatcher = newLogEntryMatcher(trac, portingTickets);
 		CommitHandler commitHandler = newCommitHandler(messageRewriter);
 		SVNURL url = SVNURL.parseURIDecoded(config().getSvnURL());
-		String[] paths = getLogPaths();
 
-		logClient.doLog(url, paths, pegRevision, startRevision, endRevision, stopOnCopy, discoverChangedPaths, limit,
-				logEntryMatcher);
+		LOG.log(Level.INFO, "Reading source history.");
+		HistroyBuilder sourceHistoryBuilder = new HistroyBuilder();
+		LogReader logReader = new LogReader(logClient, url);
+
+		// Read log in descending revision order, since the history builder requires this.
+		logReader.setStartRevision(endRevision);
+		logReader.setEndRevision(startRevision);
+
+		logReader.setPegRevision(pegRevision);
+		logReader.setStopOnCopy(false);
+		logReader.setDiscoverChangedPaths(true);
+		logReader.setLimit(NO_LIMIT);
+		logReader.readLog(getLogPaths(sourceBranch), new CombinedLogEntryHandler(logEntryMatcher, sourceHistoryBuilder));
+
+		LOG.log(Level.INFO, "Reading target history.");
+		HistroyBuilder targetHistoryBuilder = new HistroyBuilder();
+		logReader.readLog(getLogPaths(targetBranch), targetHistoryBuilder);
 		
-		List<CommitSet> commitSets = getCommitSets(commitHandler, logEntryMatcher.getEntries());
+		LOG.log(Level.INFO, "Analyzing dependencies.");
+		List<SVNLogEntry> mergedLogEntries = logEntryMatcher.getEntries();
+
+		// Bring revisions to merge back into merge order (ascending revision order).
+		Collections.reverse(mergedLogEntries);
+
+		DependencyBuilder dependencyBuilder = new DependencyBuilder(sourceBranch, targetBranch);
+		dependencyBuilder.analyzeConflicts(sourceHistoryBuilder.getHistory(), targetHistoryBuilder.getHistory(),
+			mergedLogEntries);
+
+		Map<Change, Dependency> dependencies = dependencyBuilder.getDependencies();
+		if (!dependencies.isEmpty()) {
+			LOG.log(Level.INFO, "Conflicts detected.");
+
+			Set<Change> requiredChanges = new HashSet<>();
+			for (Dependency dependency : dependencies.values()) {
+				requiredChanges.addAll(dependency.getRequiredChanges().keySet());
+			}
+
+			Map<String, List<Change>> requiredTickets = new HashMap<>();
+			for (Change change : requiredChanges) {
+				String ticketId = Utils.getTicketId(change.getMessage());
+				if (ticketId == null) {
+					ticketId = NO_TICKET_ID;
+				}
+				addListIndex(requiredTickets, ticketId, change);
+			}
+
+			ArrayList<String> requiredTicketIds = new ArrayList<>(requiredTickets.keySet());
+			Collections.sort(requiredTicketIds);
+			for (String ticketId : requiredTicketIds) {
+				if (ticketId.equals(NO_TICKET_ID)) {
+					System.out.println("== Without ticket ==");
+				} else {
+					System.out.println("== Ticket #" + ticketId + " ==");
+				}
+
+				List<Change> requiredChangesFromTicket = requiredTickets.get(ticketId);
+				Collections.sort(requiredChangesFromTicket, ChangeOrder.INSTANCE);
+				for (Change change : requiredChangesFromTicket) {
+					System.out.println("[" + change.getRevision() + "]: " + change.getMessage() + " ("
+						+ change.getAuthor() + ")");
+				}
+
+				System.out.println();
+			}
+			System.out.print("Stopping.");
+		}
+		System.exit(1);
+
+		List<CommitSet> commitSets = getCommitSets(commitHandler, mergedLogEntries);
 		if (config().getReorderCommits()) {
 			reorderCommits(commitSets);
 		}
 		for (CommitSet commitSet : commitSets) {
 			commitSet.print(System.out);
 		}
-		Log.info("Start merging " + logEntryMatcher.getEntries().size() + " revisions.");
+		Log.info("Start merging " + mergedLogEntries.size() + " revisions.");
 
 		mergeCommitHandler.run(commitSets);
 
 		Restart.clear();
 	}
 
-	private static String[] getLogPaths() {
-		String[] paths = new String[_modules.size() + 1];
+	public static <K, V> void addListIndex(Map<K, List<V>> listIndex, K key, V value) {
+		List<V> list = listIndex.get(key);
+		if (list == null) {
+			list = new ArrayList<>();
+			listIndex.put(key, list);
+		}
+		list.add(value);
+	}
+
+	private static String[] getSourcePaths() {
+		return getLogPaths(config().getSourceBranch());
+	}
+
+	private static String[] getTargetPaths() {
+		return getLogPaths(config().getTargetBranch());
+	}
+
+	private static String[] getLogPaths(String sourceBranch) {
+		Set<String> modules = _modules;
+		String[] paths = new String[modules.size() + 1];
 
 		// Add paths for each concrete module: This is done because the module could have been
 		// copied to the branch. In this case the changes in the module before copy time are not
 		// logged for the whole branch, but for the concrete module.
 		int i = 0;
 		StringBuilder path = new StringBuilder();
-		for (String module : _modules) {
-			path.append(config().getSourceBranch());
+		for (String module : modules) {
+			path.append(sourceBranch);
 			if (path.charAt(path.length() - 1) != '/')
 				path.append('/');
 			path.append(module);
@@ -135,7 +228,7 @@ public class Main {
 
 		// Add also whole branch to get changes like deletion or copying of modules which are not
 		// logged for the module itself.
-		paths[i] = config().getSourceBranch();
+		paths[i] = sourceBranch;
 		return paths;
 	}
 
