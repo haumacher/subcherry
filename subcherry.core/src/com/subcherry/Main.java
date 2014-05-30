@@ -1,6 +1,7 @@
 package com.subcherry;
 
 import static com.subcherry.Globals.*;
+import static com.subcherry.utils.CollectionUtil.*;
 
 import java.io.File;
 import java.io.FileFilter;
@@ -10,11 +11,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -39,6 +42,7 @@ import com.subcherry.history.Change;
 import com.subcherry.history.DependencyBuilder;
 import com.subcherry.history.DependencyBuilder.Dependency;
 import com.subcherry.history.HistroyBuilder;
+import com.subcherry.history.Node;
 import com.subcherry.log.DirCollector;
 import com.subcherry.merge.ContentSensitiveMerger;
 import com.subcherry.merge.MergeHandler;
@@ -69,6 +73,13 @@ public class Main {
 	private static final Logger LOG = Globals.logger(Main.class);
 
 	private static final String NO_TICKET_ID = "";
+
+	private static final Comparator<Node> PATH_ORDER = new Comparator<Node>() {
+		@Override
+		public int compare(Node n1, Node n2) {
+			return n1.getPath().compareTo(n2.getPath());
+		}
+	};
 
 	private static Set<String> _modules;
 
@@ -137,24 +148,37 @@ public class Main {
 		if (!dependencies.isEmpty()) {
 			LOG.log(Level.INFO, "Conflicts detected.");
 
-			Set<Change> requiredChanges = new HashSet<>();
+			/**
+			 * Mapping of missing changes to nodes where conflicts are expected to merged changes
+			 * that are potentially in conflict with the missing change.
+			 */
+			Map<Change, Map<Node, List<Change>>> missingChanges = new HashMap<>();
 			for (Dependency dependency : dependencies.values()) {
-				requiredChanges.addAll(dependency.getRequiredChanges().keySet());
+				Change conflictingChange = dependency.getChange();
+
+				for (Entry<Change, Set<Node>> requirement : dependency.getRequiredChanges().entrySet()) {
+					Change missingChange = requirement.getKey();
+
+					for (Node conflictNode : requirement.getValue()) {
+						mkList(mkMap(missingChanges, missingChange), conflictNode).add(conflictingChange);
+					}
+				}
 			}
 
+			/**
+			 * Ticket IDs of missing tickets mapped to changes of those tickets that are causing
+			 * conflicts.
+			 */
 			Map<String, List<Change>> requiredTickets = new HashMap<>();
-			for (Change change : requiredChanges) {
+			for (Change change : missingChanges.keySet()) {
 				String ticketId = Utils.getTicketId(change.getMessage());
 				if (ticketId == null) {
 					ticketId = NO_TICKET_ID;
 				}
-				addListIndex(requiredTickets, ticketId, change);
+				mkList(requiredTickets, ticketId).add(change);
 			}
 
-			ArrayList<String> requiredTicketIds = new ArrayList<>(requiredTickets.keySet());
-			Collections.sort(requiredTicketIds);
-
-			for (String ticketId : requiredTicketIds) {
+			for (String ticketId : keysSorted(requiredTickets)) {
 				if (ticketId.equals(NO_TICKET_ID)) {
 					System.out.println("== Without ticket ==");
 				} else {
@@ -175,9 +199,22 @@ public class Main {
 
 				List<Change> requiredChangesFromTicket = requiredTickets.get(ticketId);
 				Collections.sort(requiredChangesFromTicket, ChangeOrder.INSTANCE);
-				for (Change change : requiredChangesFromTicket) {
-					System.out.println("[" + change.getRevision() + "]: " + indent(change.getMessage()) + " ("
-						+ change.getAuthor() + ")");
+				for (Change missingChange : requiredChangesFromTicket) {
+					System.out.println("[" + missingChange.getRevision() + "]: " + quote(missingChange.getMessage())
+						+ " ("
+						+ missingChange.getAuthor() + ")");
+
+					Map<Node, List<Change>> fileConflicts = missingChanges.get(missingChange);
+					for (Node conflictNode : keysSorted(fileConflicts, PATH_ORDER)) {
+						System.out.println(" * " + conflictNode.getPath());
+						List<Change> conflicts = fileConflicts.get(conflictNode);
+						Collections.sort(conflicts, ChangeOrder.INSTANCE);
+						for (Change conflict : conflicts) {
+							System.out.println("    * [" + conflict.getRevision() + "]: "
+								+ quote(conflict.getMessage())
+								+ " (" + conflict.getAuthor() + ")");
+						}
+					}
 				}
 
 				System.out.println();
@@ -200,17 +237,8 @@ public class Main {
 		Restart.clear();
 	}
 
-	private static String indent(String message) {
-		return message.trim().replace("\n", "\n     ");
-	}
-
-	public static <K, V> void addListIndex(Map<K, List<V>> listIndex, K key, V value) {
-		List<V> list = listIndex.get(key);
-		if (list == null) {
-			list = new ArrayList<>();
-			listIndex.put(key, list);
-		}
-		list.add(value);
+	private static String quote(String message) {
+		return message.trim().replaceAll("[\\r\\n]\\s*|\\s\\s+", " ");
 	}
 
 	private static String[] getSourcePaths() {
