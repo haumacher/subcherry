@@ -114,7 +114,7 @@ public class DependencyBuilder {
 			String targetPath = _targetBranch + path.substring(_sourceBranch.length());
 			Node targetNode = targetHistory.getCurrentNode(targetPath);
 
-			Map<Long, Change> targetChanges;
+			Map<String, Change> targetChanges;
 			if (targetNode == null) {
 				// Does not exist in target branch, all change sets that are not ported are in
 				// conflict.
@@ -122,7 +122,10 @@ public class DependencyBuilder {
 			} else {
 				targetChanges = new HashMap<>();
 				for (Change change : targetNode.getChanges()) {
-					targetChanges.put(change.getRevision(), change);
+					String key = change.getKey();
+					if (key != null) {
+						targetChanges.put(key, change);
+					}
 				}
 			}
 
@@ -134,7 +137,7 @@ public class DependencyBuilder {
 						dependency.add(copy(dependencies), node);
 					}
 				} else {
-					if (!targetChanges.containsKey(change.getRevision())) {
+					if (!targetChanges.containsKey(change.getKey())) {
 						dependencies.add(change);
 					}
 				}
