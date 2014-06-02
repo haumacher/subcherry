@@ -1,6 +1,7 @@
 package com.subcherry;
 
 import java.io.File;
+import java.util.Map;
 
 import de.haumacher.common.config.Parser;
 import de.haumacher.common.config.Value;
@@ -55,7 +56,8 @@ public interface Configuration extends Value {
 
 	String[] getMilestones();
 
-	Long[] getAdditionalRevisions();
+	@ValueParser(AdditionalRevision.Parser.class)
+	Map<Long, AdditionalRevision> getAdditionalRevisions();
 
 	Long[] getStopOnRevisions();
 

@@ -217,12 +217,16 @@ public class Main {
 						}
 					}
 				}
-
 				System.out.println();
 			}
-			System.out.print("Stopping.");
+
+			System.out.print("Continue (yes/no)? ");
+			String input = Utils.SYSTEM_IN.readLine();
+			if (!input.equals("yes")) {
+				System.out.println("Stopping.");
+				System.exit(1);
+			}
 		}
-		System.exit(1);
 
 		List<CommitSet> commitSets = getCommitSets(commitHandler, mergedLogEntries);
 		if (config().getReorderCommits()) {
