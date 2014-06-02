@@ -69,7 +69,7 @@ public class MergeHandler extends Handler {
 					moduleEndIndex = changedPath.length();
 				}
 				resourceName = changedPath.substring(moduleStartIndex, moduleEndIndex);
-				ignoreAncestry = true;
+				ignoreAncestry = false;
 			}
 			
 			String branch = changedPath.substring(0, moduleStartIndex);
