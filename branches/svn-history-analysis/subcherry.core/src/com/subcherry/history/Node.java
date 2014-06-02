@@ -23,6 +23,47 @@ import java.util.List;
 
 import org.tmatesoft.svn.core.SVNNodeKind;
 
+/**
+ * Representation of a file or directory with continuous history.
+ * 
+ * <p>
+ * If history has discontinuities, multiple {@link Node}s are allocated for the same path and linked
+ * together.
+ * </p>
+ * 
+ * <p>
+ * In the following situation, a class <code>Foo</code> has been renamed to <code>AbstractFoo</code>
+ * and a new class <code>Foo</code> has been created. The new <code>foo</code> does not share the
+ * history of the old <code>Foo</code>. Instead, the history of the old <code>Foo</code> is part of
+ * the history of the new <code>AbstractFoo</code>.
+ * </p>
+ * 
+ * <xmp>
+ * Node1         before Node2
+ * |---Foo-----| <- |---Foo-----------|
+ *               \
+ *                \ copyFrom
+ *                 \ Node3
+ *                  |---AbstractFoo---|
+ * </xmp>
+ * 
+ * <p>
+ * In the picture below, a branch is deleted and a new branch directory with the same name is
+ * created further on (not sharing the history of the old branch). Afterwards, a module is added
+ * (copied) to the new branch that already existed on the old branch. The history of the new module
+ * is a continuation of the history that was deleted together with the old branch.
+ * </p>
+ * 
+ * <xmp>
+ * A----branch------------D    A----branch-------------|
+ * A----branch/module-----D       C----branch/module---|   
+ *                      ^         |
+ *                      |---------+  
+ * </xmp>
+ * 
+ * @author <a href="mailto:haui@haumacher.de">Bernhard Haumacher</a>
+ * @version $Revision$ $Author$ $Date$
+ */
 public class Node {
 
 	public enum Kind {

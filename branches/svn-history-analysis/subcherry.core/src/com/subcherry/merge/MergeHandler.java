@@ -3,11 +3,13 @@ package com.subcherry.merge;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.tmatesoft.svn.core.SVNException;
 import org.tmatesoft.svn.core.SVNLogEntry;
 import org.tmatesoft.svn.core.SVNLogEntryPath;
 
+import com.subcherry.AdditionalRevision;
 import com.subcherry.Configuration;
 import com.subcherry.utils.Log;
 import com.subcherry.utils.Utils;
@@ -32,6 +34,14 @@ public class MergeHandler extends Handler {
 	}
 
 	private Collection<SVNModule> getChangedModules(SVNLogEntry logEntry) throws SVNException {
+		AdditionalRevision additionalInfo = _config.getAdditionalRevisions().get(logEntry.getRevision());
+		Set<String> includePaths;
+		if (additionalInfo != null) {
+			includePaths = additionalInfo.getIncludePaths();
+		} else {
+			includePaths = null;
+		}
+		
 		Map<String, SVNModule> changedModules = new HashMap<String, SVNModule>();
 		Map<String, SVNLogEntryPath> changedPaths = logEntry.getChangedPaths();
 		for (String changedPath : changedPaths.keySet()) {
@@ -41,18 +51,35 @@ public class MergeHandler extends Handler {
 				Log.warning("Path does not match the branch pattern: " + changedPath);
 				continue;
 			}
-			int moduleEndIndex = changedPath.indexOf(Utils.SVN_SERVER_PATH_SEPARATOR, moduleStartIndex);
-			if (moduleEndIndex < 0) {
-				moduleEndIndex = changedPath.length();
+			
+			String resourceName;
+			boolean ignoreAncestry;
+			if (includePaths != null) {
+				String modulePath = changedPath.substring(moduleStartIndex);
+				if (includePaths.contains(modulePath)) {
+					resourceName = modulePath;
+					ignoreAncestry = true;
+				} else {
+					// Skip path.
+					continue;
+				}
+			} else {
+				int moduleEndIndex = changedPath.indexOf(Utils.SVN_SERVER_PATH_SEPARATOR, moduleStartIndex);
+				if (moduleEndIndex < 0) {
+					moduleEndIndex = changedPath.length();
+				}
+				resourceName = changedPath.substring(moduleStartIndex, moduleEndIndex);
+				ignoreAncestry = true;
 			}
-			String moduleName = changedPath.substring(moduleStartIndex, moduleEndIndex);
 			
 			String branch = changedPath.substring(0, moduleStartIndex);
 			String urlPrefix = _config.getSvnURL() + branch;
 
-			changedModules.put(moduleName, new SVNModule(moduleName, urlPrefix));
+			changedModules.put(resourceName, new SVNModule(resourceName, urlPrefix, ignoreAncestry));
 		}
-		changedModules.keySet().retainAll(_modules);
+		if (includePaths == null) {
+			changedModules.keySet().retainAll(_modules);
+		}
 		return changedModules.values();
 	}
 
