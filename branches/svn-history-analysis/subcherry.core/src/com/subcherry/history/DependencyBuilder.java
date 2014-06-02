@@ -29,6 +29,7 @@ import java.util.Set;
 import org.tmatesoft.svn.core.SVNLogEntry;
 
 import com.subcherry.history.Node.Kind;
+import com.subcherry.utils.Utils;
 
 public class DependencyBuilder {
 
@@ -61,7 +62,7 @@ public class DependencyBuilder {
 		 *        The {@link Node} on which a conflict potentially will occur, if the given changes
 		 *        are not applied before {@link #getChange()}.
 		 */
-		public void add(List<Change> requiredChanges, Node onNode) {
+		public void add(Collection<Change> requiredChanges, Node onNode) {
 			for (Change requiredChange : requiredChanges) {
 				Set<Node> nodes = _requiredChanges.get(requiredChange);
 				if (nodes == null) {
@@ -98,10 +99,20 @@ public class DependencyBuilder {
 	}
 
 	public void analyzeConflicts(History sourceHistory, History targetHistory, List<SVNLogEntry> mergeLog) {
+		Set<String> alreadyPortedTicketIds = new HashSet<>();
+		for (Change targetChange : targetHistory.getChangesByRevision().values()) {
+			String id = Utils.getTicketId(targetChange.getMessage());
+			if (id != null) {
+				alreadyPortedTicketIds.add(id);
+			}
+		}
+
 		Map<Long, Change> mergedChanges = new HashMap<>();
 		for (SVNLogEntry logEntry : mergeLog) {
 			Change change = sourceHistory.getChange(logEntry.getRevision());
 			mergedChanges.put(change.getRevision(), change);
+
+			alreadyPortedTicketIds.remove(Utils.getTicketId(change.getMessage()));
 		}
 
 		String sourcePrefix = _sourceBranch + "/";
@@ -148,16 +159,35 @@ public class DependencyBuilder {
 				}
 			}
 
+			List<Change> merges = new ArrayList<>();
 			List<Change> dependencies = new ArrayList<>();
 			for (Change change : node.getChanges()) {
 				if (mergedChanges.keySet().contains(change.getRevision())) {
+					merges.add(change);
 					if (!dependencies.isEmpty()) {
 						Dependency dependency = mkDependency(change);
 						dependency.add(copy(dependencies), node);
 					}
 				} else {
+					// The change is not being merged.
 					if (!targetChanges.containsKey(change.getKey())) {
+						// There is no equivalent change on the target node.
+
+						// Add the change to the dependency list. If there are following changes
+						// being merged, those are marked as depending on this change.
 						dependencies.add(change);
+
+						if (alreadyPortedTicketIds.contains(Utils.getTicketId(change.getMessage()))) {
+							// The change is expected to occur on the target node, but does not.
+							// This might be the case, because it only affects functionality that
+							// is first introduced with the changes being currently merged.
+
+							// All changes before the missing change are potentially require
+							// re-applying the missing change.
+							for (Change merged : merges) {
+								mkDependency(merged).add(Collections.singleton(change), node);
+							}
+						}
 					}
 				}
 			}
