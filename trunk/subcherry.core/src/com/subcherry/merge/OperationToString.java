@@ -19,28 +19,79 @@ package com.subcherry.merge;
 
 import java.util.Collection;
 
+import org.tmatesoft.svn.core.SVNDepth;
+import org.tmatesoft.svn.core.wc.SVNRevision;
+import org.tmatesoft.svn.core.wc2.SvnCopy;
+import org.tmatesoft.svn.core.wc2.SvnCopySource;
 import org.tmatesoft.svn.core.wc2.SvnMerge;
+import org.tmatesoft.svn.core.wc2.SvnOperation;
 import org.tmatesoft.svn.core.wc2.SvnRevisionRange;
 import org.tmatesoft.svn.core.wc2.SvnTarget;
 
 public class OperationToString {
 
-	static String toStringMerge(SvnMerge merge) {
+	public static String toString(SvnOperation<?> op) {
+		if (op instanceof SvnMerge) {
+			return toStringMerge((SvnMerge) op);
+		}
+		if (op instanceof SvnCopy) {
+			return toStringCopy((SvnCopy) op);
+		}
+	
+		return op.toString();
+	}
+
+	public static String toStringMerge(SvnMerge merge) {
 		StringBuilder buffer = new StringBuilder();
 		buffer.append("svn merge");
+		appendDepth(buffer, merge.getDepth());
 		if (merge.isIgnoreAncestry()) {
-			buffer.append(" --ignore-ancestry ");
+			buffer.append(" --ignore-ancestry");
+		}
+		if (merge.isRecordOnly()) {
+			buffer.append(" --record-only");
 		}
 		OperationToString.toStringRanges(buffer, merge.getRevisionRanges());
 		buffer.append(" ");
 		buffer.append(merge.getSource());
-		OperationToString.toStringTargets(buffer, merge.getTargets());
+		OperationToString.appendTargets(buffer, merge.getTargets());
 		return buffer.toString();
 	}
 
-	static void toStringTargets(StringBuilder buffer, Collection<SvnTarget> targets) {
+	public static String toStringCopy(SvnCopy copy) {
+		StringBuilder buffer = new StringBuilder();
+		buffer.append("svn copy");
+		appendDepth(buffer, copy.getDepth());
+		appendCopySources(buffer, copy.getSources());
+		appendTargets(buffer, copy.getTargets());
+		return buffer.toString();
+	}
+
+	private static void appendDepth(StringBuilder buffer, SVNDepth depth) {
+		if (depth != null && depth != SVNDepth.UNKNOWN) {
+			buffer.append(" --depth ");
+			buffer.append(depth);
+		}
+	}
+
+	private static void appendCopySources(StringBuilder buffer, Collection<SvnCopySource> sources) {
+		for (SvnCopySource source : sources) {
+			buffer.append(" ");
+			appendTarget(buffer, source.getSource());
+		}
+	}
+
+	static void appendTargets(StringBuilder buffer, Collection<SvnTarget> targets) {
 		for (SvnTarget target : targets) {
 			buffer.append(" ");
+			appendTarget(buffer, target);
+		}
+	}
+
+	private static void appendTarget(StringBuilder buffer, SvnTarget target) {
+		if (target.getFile() != null && target.getPegRevision() == SVNRevision.UNDEFINED) {
+			buffer.append(target.getFile());
+		} else {
 			buffer.append(target);
 		}
 	}

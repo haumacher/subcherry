@@ -111,7 +111,7 @@ public class Main {
 		
 		TracConnection trac = createTracConnection(tracCredentials);
 		PortingTickets portingTickets = new PortingTickets(config(), trac);
-		MergeHandler mergeHandler = new MergeHandler(config(), _modules);
+		MergeHandler mergeHandler = new MergeHandler(clientManager, config(), _modules);
 		MergeCommitHandler mergeCommitHandler =
 			new MergeCommitHandler(mergeHandler, clientManager, config());
 		RevisionRewriter revisionRewriter = mergeCommitHandler.getRevisionRewriter();

@@ -8,7 +8,6 @@ import java.util.Map;
 
 import org.tmatesoft.svn.core.SVNException;
 import org.tmatesoft.svn.core.wc.SVNConflictDescription;
-import org.tmatesoft.svn.core.wc2.SvnMerge;
 import org.tmatesoft.svn.core.wc2.SvnOperation;
 import org.tmatesoft.svn.core.wc2.SvnOperationFactory;
 
@@ -17,13 +16,13 @@ import org.tmatesoft.svn.core.wc2.SvnOperationFactory;
  */
 public class Merge {
 	
-	private final Collection<MergeResource> _resources;
+	private final Collection<SvnOperation<?>> _operations;
 
 	private final long _revision;
 
-	public Merge(long revision, Collection<MergeResource> resources) {
+	public Merge(long revision, Collection<SvnOperation<?>> operations) {
 		_revision = revision;
-		_resources = resources;
+		_operations = operations;
 	}
 
 	/**
@@ -36,23 +35,21 @@ public class Merge {
 	/**
 	 * The resources for which a merge is required.
 	 */
-	public Collection<MergeResource> getResources() {
-		return _resources;
+	public Collection<SvnOperation<?>> getOperations() {
+		return _operations;
 	}
 
 	/**
 	 * Whether this is a no-op.
 	 */
 	public boolean isEmpty() {
-		return getResources().isEmpty();
+		return getOperations().isEmpty();
 	}
 
 	public Map<File, List<SVNConflictDescription>> run(MergeContext context) throws SVNException {
 		Map<File, List<SVNConflictDescription>> allConflicts = Collections.emptyMap();
-		for (MergeResource resource : this.getResources()) {
-			SvnMerge merge = resource.createMerge(context.diffClient);
-
-			Map<File, List<SVNConflictDescription>> moduleConflicts = execute(merge);
+		for (SvnOperation<?> operation : this.getOperations()) {
+			Map<File, List<SVNConflictDescription>> moduleConflicts = execute(operation);
 
 			allConflicts = addAll(allConflicts, moduleConflicts);
 		}
@@ -60,9 +57,8 @@ public class Merge {
 	}
 
 	private Map<File, List<SVNConflictDescription>> execute(SvnOperation<?> op) throws SVNException {
-		if (op instanceof SvnMerge) {
-			System.out.println(OperationToString.toStringMerge((SvnMerge) op));
-		}
+		System.out.println(OperationToString.toString(op));
+
 		SvnOperationFactory operationFactory = op.getOperationFactory();
 
 		TouchCollector touchedFilesHandler = new TouchCollector(operationFactory.getEventHandler());
