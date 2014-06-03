@@ -146,7 +146,7 @@ public class MergeCommitHandler {
 		merge:
 		while (true) {
 			Map<File, List<SVNConflictDescription>> conflicts = merge.run(_mergeContext);
-			if (conflicts != Merge.NO_CONFLICTS) {
+			if (!conflicts.isEmpty()) {
 				log(conflicts);
 				InputResult result = queryCommit(commit, "commit");
 				switch (result) {
