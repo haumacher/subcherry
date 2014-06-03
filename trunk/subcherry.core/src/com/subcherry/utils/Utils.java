@@ -255,5 +255,14 @@ public class Utils {
 		}
 	}
 
+	public static String getDetailMessage(String message) {
+		Matcher matcher = TICKET_PATTERN.matcher(message);
+		if (matcher.matches()) {
+			return getOriginalMessage(matcher);
+		} else {
+			return null;
+		}
+	}
+
 }
 

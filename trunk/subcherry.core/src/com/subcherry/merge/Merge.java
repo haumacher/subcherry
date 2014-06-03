@@ -54,7 +54,8 @@ public class Merge {
 			SVNURL startURL = module.getURL();
 			File dstPath = new File(workspaceRoot, module.getName());
 
-			Map<File, List<SVNConflictDescription>> moduleConflicts = doMerge(context.diffClient, startURL, dstPath);
+			Map<File, List<SVNConflictDescription>> moduleConflicts =
+				doMerge(context.diffClient, startURL, dstPath, module.getIgnoreAncestry());
 			if (moduleConflicts != NO_CONFLICTS) {
 				if (allConflicts == NO_CONFLICTS) {
 					allConflicts = moduleConflicts;
@@ -66,7 +67,8 @@ public class Merge {
 		return allConflicts;
 	}
 	
-	Map<File, List<SVNConflictDescription>> doMerge(SVNDiffClient diffClient, SVNURL url, File dstPath) throws SVNException {
+	Map<File, List<SVNConflictDescription>> doMerge(SVNDiffClient diffClient, SVNURL url, File dstPath,
+			boolean ignoreAncestry) throws SVNException {
 		SvnOperationFactory operationsFactory = diffClient.getOperationsFactory();
 		SvnMerge merge = operationsFactory.createMerge();
 		SVNRevision startRevision = SVNRevision.create(revert ? revision : revision - 1);
@@ -81,14 +83,14 @@ public class Merge {
 		boolean allowMixedRevisionsWCForMerge = true; // diffClient.isAllowMixedRevisionsWCForMerge();
 		merge.setAllowMixedRevisions(allowMixedRevisionsWCForMerge);
 		SvnTarget target = SvnTarget.fromFile(dstPath);
-		merge.addTarget(target);
+		merge.setSingleTarget(target);
 
 		SvnTarget source = SvnTarget.fromURL(url, startRevision);
 		merge.setSource(source, false);
 		SVNRevisionRange range = new SVNRevisionRange(startRevision, endRevision);
 		merge.addRevisionRange(SvnRevisionRange.create(range.getStartRevision(), range.getEndRevision()));
 		
-		merge.setIgnoreAncestry(revert);
+		merge.setIgnoreAncestry(revert || ignoreAncestry);
 		
 		System.out.println("svn merge " + (revert ? "--ignore-ancestry ": "") + "-r" + range.getStartRevision() + ":" + range.getEndRevision() + " " + source + " " + target.getFile());
 		

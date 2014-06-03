@@ -55,7 +55,7 @@ public class DefaultLogEntryMatcher extends SVNLogEntryMatcher {
 	}
 
 	private Set<Long> getAdditionalRevisions(Configuration config) {
-		return toSet(config.getAdditionalRevisions());
+		return config.getAdditionalRevisions().keySet();
 	}
 
 	private Collection<String> getMilestones(Configuration config) {
@@ -87,7 +87,7 @@ public class DefaultLogEntryMatcher extends SVNLogEntryMatcher {
 		}
 		
 		if (_additionalRevisions.contains(revision)) {
-			Log.info("Use " + revision + " as it is configured to be used");
+			Log.info("Use " + revision + " as it is configured to be used explicitly.");
 			return true;
 		}
 
