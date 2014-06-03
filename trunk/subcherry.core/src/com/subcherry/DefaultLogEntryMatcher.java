@@ -61,7 +61,7 @@ public class DefaultLogEntryMatcher extends SVNLogEntryMatcher {
 	private Collection<String> getMilestones(Configuration config) {
 		Set<String> milestones = toSet(config.getMilestones());
 		String targetMilestone = config.getTargetMilestone();
-		if (targetMilestone != null) {
+		if (!targetMilestone.isEmpty()) {
 			milestones.add(targetMilestone);
 		}
 		return milestones;
