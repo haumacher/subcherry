@@ -28,12 +28,10 @@ public class MergeHandler extends Handler {
 	}
 
 	public Merge parseMerge(SVNLogEntry logEntry) throws SVNException {
-		long revision = logEntry.getRevision();
-		Collection<MergeResource> resources = getChangedModules(logEntry);
-		return new Merge(revision, resources, _config.getRevert());
+		return new Merge(logEntry.getRevision(), buildResources(logEntry));
 	}
 
-	private Collection<MergeResource> getChangedModules(SVNLogEntry logEntry) throws SVNException {
+	private Collection<MergeResource> buildResources(SVNLogEntry logEntry) throws SVNException {
 		AdditionalRevision additionalInfo = _config.getAdditionalRevisions().get(logEntry.getRevision());
 		Set<String> includePaths;
 		if (additionalInfo != null) {
@@ -72,7 +70,8 @@ public class MergeHandler extends Handler {
 				String branch = changedPath.substring(0, moduleStartIndex);
 				String urlPrefix = _config.getSvnURL() + branch;
 	
-				resourcesByName.put(resourceName, new MergeResource(resourceName, urlPrefix, false));
+				resourcesByName.put(resourceName, new MergeResource(_config, logEntry.getRevision(), resourceName,
+					urlPrefix, false));
 			}
 		}
 	

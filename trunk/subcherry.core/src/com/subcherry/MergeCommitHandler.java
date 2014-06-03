@@ -133,12 +133,12 @@ public class MergeCommitHandler {
 		_doneRevs++;
 
 		Merge merge = _mergeHandler.parseMerge(logEntry);
-		if (merge.resources.size() == 0) {
-			Log.info("Skipping '" + merge.revision + "' (no relevant modules touched).");
+		if (merge.isEmpty()) {
+			Log.info("Skipping '" + merge.getRevision() + "' (no relevant modules touched).");
 			return;
 		}
 		
-		boolean commitAproval = _autoCommit && !_stopOnRevisions.contains(merge.revision);
+		boolean commitAproval = _autoCommit && !_stopOnRevisions.contains(merge.getRevision());
 		
 		System.out.println("Revision " + logEntry.getRevision() + " (" + _doneRevs + " of " + _totalRevs + "): "
 			+ encode(logEntry.getMessage()));
