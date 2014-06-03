@@ -29,11 +29,11 @@ public class MergeHandler extends Handler {
 
 	public Merge parseMerge(SVNLogEntry logEntry) throws SVNException {
 		long revision = logEntry.getRevision();
-		Collection<SVNModule> changedModules = getChangedModules(logEntry);
-		return new Merge(revision, changedModules, _config.getRevert());
+		Collection<MergeResource> resources = getChangedModules(logEntry);
+		return new Merge(revision, resources, _config.getRevert());
 	}
 
-	private Collection<SVNModule> getChangedModules(SVNLogEntry logEntry) throws SVNException {
+	private Collection<MergeResource> getChangedModules(SVNLogEntry logEntry) throws SVNException {
 		AdditionalRevision additionalInfo = _config.getAdditionalRevisions().get(logEntry.getRevision());
 		Set<String> includePaths;
 		if (additionalInfo != null) {
@@ -42,7 +42,7 @@ public class MergeHandler extends Handler {
 			includePaths = null;
 		}
 		
-		Map<String, SVNModule> changedModules = new HashMap<String, SVNModule>();
+		Map<String, MergeResource> resourcesByName = new HashMap<String, MergeResource>();
 		Map<String, SVNLogEntryPath> changedPaths = logEntry.getChangedPaths();
 		for (String changedPath : changedPaths.keySet()) {
 			int moduleStartIndex = getModuleStartIndex(changedPath);
@@ -75,12 +75,12 @@ public class MergeHandler extends Handler {
 			String branch = changedPath.substring(0, moduleStartIndex);
 			String urlPrefix = _config.getSvnURL() + branch;
 
-			changedModules.put(resourceName, new SVNModule(resourceName, urlPrefix, ignoreAncestry));
+			resourcesByName.put(resourceName, new MergeResource(resourceName, urlPrefix, ignoreAncestry));
 		}
 		if (includePaths == null) {
-			changedModules.keySet().retainAll(_modules);
+			resourcesByName.keySet().retainAll(_modules);
 		}
-		return changedModules.values();
+		return resourcesByName.values();
 	}
 
 }

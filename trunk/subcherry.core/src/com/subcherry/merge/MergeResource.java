@@ -9,7 +9,7 @@ import org.tmatesoft.svn.core.SVNURL;
  * @version $Revision$ $Author$ $Date: 2013-03-16 15:55:27 +0100
  *          (Sat, 16 Mar 2013) $
  */
-public class SVNModule {
+public class MergeResource {
 
 	private String moduleName;
 	private SVNURL url;
@@ -17,7 +17,7 @@ public class SVNModule {
 	private final boolean _ignoreAncestry;
 
 	/**
-	 * Creates a {@link SVNModule}.
+	 * Creates a {@link MergeResource}.
 	 * 
 	 * @param moduleName
 	 *        See {@link #getName()}.
@@ -26,7 +26,7 @@ public class SVNModule {
 	 * @param ignoreAncestry
 	 *        See {@link #getIgnoreAncestry()}.
 	 */
-	public SVNModule(String moduleName, String urlPrefix, boolean ignoreAncestry) throws SVNException {
+	public MergeResource(String moduleName, String urlPrefix, boolean ignoreAncestry) throws SVNException {
 		this.moduleName = moduleName;
 		this.url = SVNURL.parseURIDecoded(urlPrefix + moduleName);
 		_ignoreAncestry = ignoreAncestry;
@@ -51,14 +51,14 @@ public class SVNModule {
 		if (obj == this) {
 			return true;
 		}
-		if (! (obj instanceof SVNModule)) {
+		if (! (obj instanceof MergeResource)) {
 			return false;
 		}
 
-		return equalsModule((SVNModule)obj);
+		return equalsModule((MergeResource)obj);
 	}
 
-	private boolean equalsModule(SVNModule other) {
+	private boolean equalsModule(MergeResource other) {
 		return moduleName.equals(other.moduleName);
 	}
 	

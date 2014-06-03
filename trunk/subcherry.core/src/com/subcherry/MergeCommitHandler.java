@@ -133,7 +133,7 @@ public class MergeCommitHandler {
 		_doneRevs++;
 
 		Merge merge = _mergeHandler.parseMerge(logEntry);
-		if (merge.changedModules.size() == 0) {
+		if (merge.resources.size() == 0) {
 			Log.info("Skipping '" + merge.revision + "' (no relevant modules touched).");
 			return;
 		}

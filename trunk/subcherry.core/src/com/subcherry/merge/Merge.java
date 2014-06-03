@@ -35,13 +35,13 @@ public class Merge {
 	public static final Map<File, List<SVNConflictDescription>> NO_CONFLICTS = Collections.emptyMap();
 	
 	public long revision;
-	public Collection<SVNModule> changedModules;
+	public Collection<MergeResource> resources;
 
 	private final boolean revert;
 
-	public Merge(long revision, Collection<SVNModule> changedModules, boolean revert) {
+	public Merge(long revision, Collection<MergeResource> resources, boolean revert) {
 		this.revision = revision;
-		this.changedModules = changedModules;
+		this.resources = resources;
 		this.revert = revert;
 	}
 
@@ -50,12 +50,12 @@ public class Merge {
 		
 		Map<File, List<SVNConflictDescription>> allConflicts = NO_CONFLICTS;
 		
-		for (SVNModule module : this.changedModules) {
-			SVNURL startURL = module.getURL();
-			File dstPath = new File(workspaceRoot, module.getName());
+		for (MergeResource resource : this.resources) {
+			SVNURL startURL = resource.getURL();
+			File dstPath = new File(workspaceRoot, resource.getName());
 
 			Map<File, List<SVNConflictDescription>> moduleConflicts =
-				doMerge(context.diffClient, startURL, dstPath, module.getIgnoreAncestry());
+				doMerge(context.diffClient, startURL, dstPath, resource.getIgnoreAncestry());
 			if (moduleConflicts != NO_CONFLICTS) {
 				if (allConflicts == NO_CONFLICTS) {
 					allConflicts = moduleConflicts;
