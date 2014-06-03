@@ -3,7 +3,7 @@ package com.subcherry;
 import java.io.File;
 import java.util.Map;
 
-import de.haumacher.common.config.Parser;
+import de.haumacher.common.config.ObjectParser;
 import de.haumacher.common.config.Value;
 import de.haumacher.common.config.annotate.ValueParser;
 
@@ -75,7 +75,7 @@ public interface Configuration extends Value {
 
 	boolean getDetectCommonModules();
 
-	public class BranchParser implements Parser<String> {
+	public class BranchParser extends ObjectParser<String> {
 
 		@Override
 		public String parse(String text) {
@@ -91,16 +91,6 @@ public interface Configuration extends Value {
 		@Override
 		public String unparse(String value) {
 			return value;
-		}
-
-		@Override
-		public boolean equals(String value1, String value2) {
-			return value1.equals(value2);
-		}
-
-		@Override
-		public int hashCode(String value) {
-			return value.hashCode();
 		}
 
 	}

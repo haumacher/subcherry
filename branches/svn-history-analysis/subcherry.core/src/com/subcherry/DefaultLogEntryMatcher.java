@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -56,11 +55,7 @@ public class DefaultLogEntryMatcher extends SVNLogEntryMatcher {
 	}
 
 	private Set<Long> getAdditionalRevisions(Configuration config) {
-		Map<Long, AdditionalRevision> additionalRevisions = config.getAdditionalRevisions();
-		if (additionalRevisions == null) {
-			return Collections.emptySet();
-		}
-		return additionalRevisions.keySet();
+		return config.getAdditionalRevisions().keySet();
 	}
 
 	private Collection<String> getMilestones(Configuration config) {
