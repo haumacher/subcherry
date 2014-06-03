@@ -20,9 +20,9 @@ import com.subcherry.utils.Utils;
  */
 public class MergeHandler extends Handler {
 
-	private final Collection<String> _modules;
+	private final Set<String> _modules;
 
-	public MergeHandler(Configuration config, Collection<String> modules) {
+	public MergeHandler(Configuration config, Set<String> modules) {
 		super(config);
 		_modules = modules;
 	}
@@ -42,45 +42,94 @@ public class MergeHandler extends Handler {
 			includePaths = null;
 		}
 		
+		MergeResourceBuilder builder;
+		if (includePaths == null) {
+			builder = new CompleteChangeSetBuilder(_modules);
+		} else {
+			builder = new PartialChangeSetBuilder(includePaths);
+		}
+		return createMergeResources(logEntry, builder);
+	}
+
+	private Collection<MergeResource> createMergeResources(SVNLogEntry logEntry, MergeResourceBuilder builder)
+			throws SVNException {
 		Map<String, MergeResource> resourcesByName = new HashMap<String, MergeResource>();
 		Map<String, SVNLogEntryPath> changedPaths = logEntry.getChangedPaths();
 		for (String changedPath : changedPaths.keySet()) {
 			int moduleStartIndex = getModuleStartIndex(changedPath);
-			
+	
 			if (moduleStartIndex < 0) {
 				Log.warning("Path does not match the branch pattern: " + changedPath);
 				continue;
 			}
-			
-			String resourceName;
-			boolean ignoreAncestry;
-			if (includePaths != null) {
-				String modulePath = changedPath.substring(moduleStartIndex);
-				if (includePaths.contains(modulePath)) {
-					resourceName = modulePath;
-					ignoreAncestry = true;
-				} else {
-					// Skip path.
-					continue;
-				}
-			} else {
-				int moduleEndIndex = changedPath.indexOf(Utils.SVN_SERVER_PATH_SEPARATOR, moduleStartIndex);
-				if (moduleEndIndex < 0) {
-					moduleEndIndex = changedPath.length();
-				}
-				resourceName = changedPath.substring(moduleStartIndex, moduleEndIndex);
-				ignoreAncestry = false;
+	
+			String resourceName = builder.getResourceName(changedPath, moduleStartIndex);
+			if (resourceName == null) {
+				continue;
 			}
-			
-			String branch = changedPath.substring(0, moduleStartIndex);
-			String urlPrefix = _config.getSvnURL() + branch;
-
-			resourcesByName.put(resourceName, new MergeResource(resourceName, urlPrefix, ignoreAncestry));
+	
+			if (!resourcesByName.containsKey(resourceName)) {
+				String branch = changedPath.substring(0, moduleStartIndex);
+				String urlPrefix = _config.getSvnURL() + branch;
+	
+				resourcesByName.put(resourceName, new MergeResource(resourceName, urlPrefix, false));
+			}
 		}
-		if (includePaths == null) {
-			resourcesByName.keySet().retainAll(_modules);
-		}
+	
 		return resourcesByName.values();
+	}
+
+	interface MergeResourceBuilder {
+
+		String getResourceName(String changedPath, int moduleStartIndex);
+
+	}
+
+	static class CompleteChangeSetBuilder implements MergeResourceBuilder {
+
+		private Set<String> _modules;
+
+		public CompleteChangeSetBuilder(Set<String> modules) {
+			_modules = modules;
+		}
+
+		@Override
+		public String getResourceName(String changedPath, int moduleStartIndex) {
+			String moduleName = getModuleName(changedPath, moduleStartIndex);
+			if (!_modules.contains(moduleName)) {
+				return null;
+			}
+			return moduleName;
+		}
+
+		private String getModuleName(String changedPath, int moduleStartIndex) {
+			int moduleEndIndex = changedPath.indexOf(Utils.SVN_SERVER_PATH_SEPARATOR, moduleStartIndex);
+			if (moduleEndIndex < 0) {
+				moduleEndIndex = changedPath.length();
+			}
+			return changedPath.substring(moduleStartIndex, moduleEndIndex);
+		}
+
+	}
+
+	static class PartialChangeSetBuilder implements MergeResourceBuilder {
+
+		private Set<String> _includePaths;
+
+		public PartialChangeSetBuilder(Set<String> includePaths) {
+			_includePaths = includePaths;
+		}
+
+		@Override
+		public String getResourceName(String changedPath, int moduleStartIndex) {
+			String modulePath = changedPath.substring(moduleStartIndex);
+			if (!_includePaths.contains(modulePath)) {
+				// Skip path.
+				return null;
+			}
+			return modulePath;
+		}
+
 	}
 
 }
