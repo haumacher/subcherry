@@ -18,6 +18,7 @@
 package com.subcherry;
 
 import java.io.File;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -34,6 +35,11 @@ public class AdditionalRevision {
 		private static final Pattern FORMAT =
 			Pattern.compile("\\s*(" + "\\d+" + ")" + "\\s*" +
 				"(?:" + "\\(" + "\\s*" + "([^\\)]+)" + "\\s*" + "\\)" + ")?" + "(\\s*,)?\\s*");
+
+		@Override
+		public Map<Long, AdditionalRevision> defaultValue() {
+			return Collections.emptyMap();
+		}
 
 		@Override
 		public Map<Long, AdditionalRevision> parse(String text) {
