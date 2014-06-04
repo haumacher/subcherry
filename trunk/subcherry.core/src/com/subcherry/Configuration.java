@@ -2,6 +2,7 @@ package com.subcherry;
 
 import java.io.File;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import de.haumacher.common.config.ObjectParser;
 import de.haumacher.common.config.Value;
@@ -94,4 +95,17 @@ public interface Configuration extends Value {
 		}
 
 	}
+
+	DependencyReport getDependencyReport();
+
+	interface DependencyReport extends Value {
+
+		@ValueParser(PatternParser.class)
+		Pattern getExcludeTicketMilestone();
+
+		@ValueParser(PatternParser.class)
+		Pattern getExcludePath();
+
+	}
+
 }

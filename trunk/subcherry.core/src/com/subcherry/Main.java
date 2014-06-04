@@ -21,6 +21,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 import org.tmatesoft.svn.core.SVNException;
 import org.tmatesoft.svn.core.SVNLogEntry;
@@ -93,7 +94,7 @@ public class Main {
 	public static void doMerge(LoginCredential tracCredentials) throws SVNException, IOException {
 		SVNRevision startRevision = config().getRevert() ? getEndRevision() : getStartRevision();
 		SVNRevision endRevision = config().getRevert() ? getStartRevision() : getEndRevision();
-		SVNRevision pegRevision = getPegRevision(startRevision);
+		SVNRevision pegRevision = getPegRevision();
 		SVNClientManager clientManager = newSVNClientManager();
 		SVNLogClient logClient = clientManager.getLogClient();
 		
@@ -178,54 +179,53 @@ public class Main {
 				mkList(requiredTickets, ticketId).add(change);
 			}
 
-			System.out.println("= Conflict Report =");
+			ReportPrinter printer = new ReportPrinter();
+			printer.startReport();
 			for (String ticketId : keysSorted(requiredTickets)) {
+				TracTicket ticket;
 				if (ticketId.equals(NO_TICKET_ID)) {
-					System.out.println("== Without ticket ==");
+					ticket = null;
 				} else {
-					TracTicket ticket = TracTicket.getTicket(trac, Integer.parseInt(ticketId));
-					boolean hasComponent = ticket.getComponent() != null && !ticket.getComponent().isEmpty();
-					boolean hasMilestone = ticket.getMilestone() != null && !ticket.getMilestone().isEmpty();
-					System.out.println("== Ticket #"
-						+ ticketId + " "
-						+ (hasComponent ? ticket.getComponent() : "-")
-						+ (hasMilestone ? "/" + ticket.getMilestone() : "")
-						+ ": "
-						+ ticket.getSummary() + " ("
-						+ ticket.getStatus()
-						+ (ticket.getResolution() != null && !ticket.getResolution().isEmpty() ? "/"
-							+ ticket.getResolution() : "")
-						+ ") ==");
+					ticket = TracTicket.getTicket(trac, Integer.parseInt(ticketId));
+
+					if (matches(config().getDependencyReport().getExcludeTicketMilestone(), ticket.getMilestone())) {
+						continue;
+					}
 				}
+
+				printer.setTicket(ticketId, ticket);
 
 				List<Change> requiredChangesFromTicket = requiredTickets.get(ticketId);
 				Collections.sort(requiredChangesFromTicket, ChangeOrder.INSTANCE);
 				for (Change missingChange : requiredChangesFromTicket) {
-					System.out.println("[" + missingChange.getRevision() + "]: " + quote(missingChange.getMessage())
-						+ " ("
-						+ missingChange.getAuthor() + ")");
+					printer.setMissingChange(missingChange);
 
 					Map<Node, List<Change>> fileConflicts = missingChanges.get(missingChange);
 					for (Node conflictNode : keysSorted(fileConflicts, PATH_ORDER)) {
-						System.out.println(" * " + conflictNode.getPath()
-							+ (conflictNode.isAlive() ? "" : " (deleted in [" + (conflictNode.getRevMax() + 1) + "])"));
+						if (matches(config().getDependencyReport().getExcludePath(), conflictNode.getPath())) {
+							continue;
+						}
+
+						printer.setConflictNode(conflictNode);
+
 						List<Change> conflicts = fileConflicts.get(conflictNode);
 						Collections.sort(conflicts, ChangeOrder.INSTANCE);
 						for (Change conflict : conflicts) {
-							System.out.println("    * [" + conflict.getRevision() + "]: "
-								+ quote(conflict.getMessage())
-								+ " (" + conflict.getAuthor() + ")");
+							printer.printConflictingChange(conflict);
 						}
 					}
 				}
-				System.out.println();
+				printer.endTicket();
 			}
+			printer.endReport();
 
-			System.out.print("Continue (yes/no)? ");
-			String input = Utils.SYSTEM_IN.readLine();
-			if (!input.equals("yes")) {
-				System.out.println("Stopping.");
-				System.exit(1);
+			if (printer.hasConflictsReported()) {
+				System.out.print("Continue (yes/no)? ");
+				String input = Utils.SYSTEM_IN.readLine();
+				if (!input.equals("yes")) {
+					System.out.println("Stopping.");
+					System.exit(1);
+				}
 			}
 		}
 
@@ -243,8 +243,12 @@ public class Main {
 		Restart.clear();
 	}
 
-	private static String quote(String message) {
-		return message.trim().replaceAll("[\\r\\n]\\s*|\\s\\s+", " ");
+	private static boolean matches(Pattern pattern, String text) {
+		if (pattern == null) {
+			return false;
+		}
+
+		return pattern.matcher(text).find();
 	}
 
 	private static String[] getSourcePaths() {
@@ -317,7 +321,7 @@ public class Main {
 		return result;
 	}
 
-	private static SVNRevision getPegRevision(SVNRevision startRevision) {
+	private static SVNRevision getPegRevision() {
 		return getRevisionOrHead(config().getPegRevision());
 	}
 
