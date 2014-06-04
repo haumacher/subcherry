@@ -17,7 +17,6 @@
  */
 package com.subcherry.history;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
@@ -263,13 +262,7 @@ public class History {
 	}
 
 	public Collection<Node> getTouchedNodes() {
-		ArrayList<Node> result = new ArrayList<>();
-		for (Node node : _nodesByPath.values()) {
-			if (node.isAlive()) {
-				result.add(node);
-			}
-		}
-		return result;
+		return _nodesByPath.values();
 	}
 
 	public Change getChange(long revision) {
