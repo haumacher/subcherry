@@ -207,7 +207,8 @@ public class Main {
 
 					Map<Node, List<Change>> fileConflicts = missingChanges.get(missingChange);
 					for (Node conflictNode : keysSorted(fileConflicts, PATH_ORDER)) {
-						System.out.println(" * " + conflictNode.getPath());
+						System.out.println(" * " + conflictNode.getPath()
+							+ (conflictNode.isAlive() ? "" : " (deleted in [" + (conflictNode.getRevMax() + 1) + "])"));
 						List<Change> conflicts = fileConflicts.get(conflictNode);
 						Collections.sort(conflicts, ChangeOrder.INSTANCE);
 						for (Change conflict : conflicts) {
