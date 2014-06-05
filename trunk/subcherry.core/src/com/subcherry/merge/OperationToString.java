@@ -37,8 +37,18 @@ public class OperationToString {
 		if (op instanceof SvnCopy) {
 			return toStringCopy((SvnCopy) op);
 		}
+		if (op instanceof SvnDelete) {
+			return toStringDelete((SvnDelete) op);
+		}
 	
 		return op.toString();
+	}
+
+	public static String toStringDelete(SvnDelete delete) {
+		StringBuilder buffer = new StringBuilder();
+		buffer.append("svn delete");
+		appendTargets(buffer, delete.getTargets());
+		return buffer.toString();
 	}
 
 	public static String toStringMerge(SvnMerge merge) {

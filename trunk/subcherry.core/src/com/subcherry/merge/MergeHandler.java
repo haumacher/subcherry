@@ -211,6 +211,24 @@ public class MergeHandler extends Handler {
 				}
 			}
 		}
+
+		for (SVNLogEntryPath pathEntry : _logEntry.getChangedPaths().values()) {
+			if (ChangeType.fromSvn(pathEntry.getType()) == ChangeType.DELETED) {
+				String targetPath = pathEntry.getPath();
+				String targetBranch = getBranch(targetPath);
+				String targetResource = getModulePath(targetPath, targetBranch.length());
+
+				if (!excludePaths.contains(targetResource)) {
+					final File targetFile = new File(_config.getWorkspaceRoot(), targetResource);
+					SvnDelete delete = new SvnDelete(operations());
+					delete.setSingleTargetFile(targetFile);
+					_operations.add(delete);
+
+					excludePaths.add(targetResource);
+				}
+			}
+		}
+
 		return excludePaths;
 	}
 
