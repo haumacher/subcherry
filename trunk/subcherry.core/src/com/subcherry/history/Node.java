@@ -211,7 +211,7 @@ public class Node {
 
 	@Override
 	public String toString() {
-		return _path + " [" + _revMin + ", " + (isAlive() ? "HEAD" : _revMax) + "]";
+		return _kind + " " + _path + " [" + _revMin + ", " + (isAlive() ? "HEAD" : _revMax) + "]";
 	}
 
 }

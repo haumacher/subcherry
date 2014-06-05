@@ -17,10 +17,17 @@
  */
 package com.subcherry.history;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeMap;
 
 import com.subcherry.history.Node.Kind;
 
@@ -28,7 +35,7 @@ public class History {
 
 	private Map<Long, Change> _changesByRevision = new HashMap<>();
 
-	private Map<String, Node> _nodesByPath = new HashMap<>();
+	private TreeMap<String, Node> _nodesByPath = new TreeMap<>();
 
 	private final long _startRevision;
 
@@ -97,11 +104,19 @@ public class History {
 	private void markDeleted(Node node, Change change) {
 		node.delete(change);
 
-		String path = node.getPath();
-		if (node.getKind() == Kind.DIR) {
-			// Delete potential children.
-			for (Node child : _nodesByPath.values()) {
-				if (child.isAlive() && child.getPath().startsWith(path)) {
+		if (node.getKind() != Kind.FILE) {
+			// Delete children.
+			String dirPrefix = dirPrefix(node.getPath());
+			for (Entry<String, Node> entry : _nodesByPath.tailMap(dirPrefix, false).entrySet()) {
+				if (!entry.getKey().startsWith(dirPrefix)) {
+					// All children of a directory have a path that is alphabetically larger than
+					// the directory prefix of its parent directory.
+					break;
+				}
+
+				// Delete child.
+				Node child = entry.getValue();
+				if (child.isAlive()) {
 					child.delete(change);
 				}
 			}
@@ -264,8 +279,91 @@ public class History {
 		return _changesByRevision;
 	}
 
-	public Collection<Node> getTouchedNodes() {
-		return _nodesByPath.values();
+	public Collection<Node> expandContents(String path) {
+		return expandContents(path, Node.HEAD);
+	}
+
+	public Collection<Node> expandContents(String path, long revision) {
+		Set<Node> result = new HashSet<>();
+		for (Node currentNode : reverse(getNodes(path))) {
+			Node nodeInRev = backToRevision(currentNode, revision);
+			if (nodeInRev == null) {
+				continue;
+			}
+			result.add(nodeInRev);
+
+			if (nodeInRev.getKind() != Kind.FILE) {
+				Node copyNode = nodeInRev.getCopyNode();
+				if (copyNode != null) {
+					String copyPath = copyNode.getPath();
+					int copyPathLength = copyPath.length();
+
+					Collection<Node> expandedNodes = expandContents(copyPath, nodeInRev.getCopyRevision());
+					for (Node expandedNode : expandedNodes) {
+						String expandedPath = expandedNode.getPath();
+						if (expandedPath.length() > copyPathLength) {
+							// True contents.
+
+							String transformedPath = nodeInRev.getPath() + expandedPath.substring(copyPathLength);
+							Node contentNode = lookupNode(expandedNode.getKind(), transformedPath, revision);
+							if (contentNode != null) {
+								result.add(contentNode);
+							}
+						}
+					}
+				}
+			}
+		}
+		return result;
+	}
+
+	private static <T> List<T> reverse(List<T> list) {
+		Collections.reverse(list);
+		return list;
+	}
+
+	public List<Node> getNodes(String path) {
+		ArrayList<Node> result = new ArrayList<>();
+
+		Node node = _nodesByPath.get(path);
+		if (node != null) {
+			result.add(node);
+		}
+
+		addContentNodes(result, path);
+
+		return result;
+	}
+
+	private void addContentNodes(Collection<Node> result, String path) {
+		String dirPrefix = dirPrefix(path);
+		for (Entry<String, Node> entry : _nodesByPath.tailMap(dirPrefix, false).entrySet()) {
+			if (!entry.getKey().startsWith(dirPrefix)) {
+				break;
+			}
+
+			result.add(entry.getValue());
+		}
+	}
+
+	/**
+	 * The path prefix, all content nodes of a given path start with.
+	 * 
+	 * <p>
+	 * Note: This is a workaround for not defining directory nodes having a path ending with the '/'
+	 * character.
+	 * </p>
+	 * 
+	 * @param path
+	 *        The parent path.
+	 * @return The path prefix of all content nodes.
+	 */
+	private static String dirPrefix(String path) {
+		int pathLength = path.length();
+		if (pathLength > 0 && path.charAt(pathLength - 1) == '/') {
+			return path;
+		}
+		return path + '/';
 	}
 
 	public Change getChange(long revision) {

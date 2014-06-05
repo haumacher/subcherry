@@ -18,6 +18,7 @@
 package test.com.subcherry.history;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -83,6 +84,10 @@ public class TestHistroyBuilder extends TestCase {
 		assertChanges(revisions(50, 60), "/branches/unstable/module/file-1");
 
 		move(70, "/branches/unstable", "/branches/stable");
+
+		assertNoChanges("/branches/unstable");
+		assertNoChanges("/branches/unstable/module/file-1");
+
 		modify(80, "/branches/stable/module/file-1");
 
 		assertChanges(revisions(50, 60, 80), "/branches/stable/module/file-1");
@@ -190,6 +195,54 @@ public class TestHistroyBuilder extends TestCase {
 
 		assertChanges(revisions(90, 140, 190), "/b1/file");
 		assertChanges(revisions(100, 150, 200), "/b2/file");
+	}
+
+	public void testCurrentViewOfCopiedChanges() throws SVNException {
+		create(50, "/branches/unstable");
+		create(60, "/branches/unstable/file-1");
+		modify(70, "/branches/unstable/file-1");
+
+		copy(80, "/branches/unstable", "/branches/stable");
+		create(90, "/branches/stable/file-2");
+		modify(100, "/branches/stable/file-2");
+
+		expandContents("/branches/stable");
+		assertNodes(
+			"/branches/stable",
+			"/branches/stable/file-1",
+			"/branches/stable/file-2");
+	}
+
+	public void testCurrentViewOfCopiedChangesBeforeDeletion() throws SVNException {
+		create(50, "/branches/unstable");
+		create(60, "/branches/unstable/file-1");
+		modify(70, "/branches/unstable/file-1");
+		create(80, "/branches/unstable/file-2");
+		modify(90, "/branches/unstable/file-3");
+		delete(100, "/branches/unstable");
+
+		copy(110, "/branches/unstable", 70, "/branches/stable");
+		create(120, "/branches/stable/file-3");
+		modify(130, "/branches/stable/file-3");
+
+		expandContents("/branches/stable");
+		assertNodes(
+			"/branches/stable",
+			"/branches/stable/file-1",
+			"/branches/stable/file-3");
+	}
+
+	private void assertNodes(String... expectedPaths) {
+		List<Node> nodes = _builder.getHistory().getNodes(expectedPaths[0]);
+		List<String> paths = new ArrayList<>();
+		for (Node node : nodes) {
+			paths.add(node.getPath());
+		}
+		assertEquals(Arrays.asList(expectedPaths), paths);
+	}
+
+	private void expandContents(String path) {
+		_builder.getHistory().expandContents(path);
 	}
 
 	private void create(long revision, String path) throws SVNException {

@@ -99,9 +99,11 @@ public class DependencyBuilder {
 	}
 
 	public void analyzeConflicts(History history, List<SVNLogEntry> mergeLog) {
+		history.expandContents(_sourceBranch);
+		history.expandContents(_targetBranch);
+
 		Set<Change> targetChanges = new HashSet<>();
-		String targetPrefix = _targetBranch + "/";
-		for (Node targetNode : nodesWithPrefix(targetPrefix, history.getTouchedNodes())) {
+		for (Node targetNode : fileNodes(history.getNodes(_targetBranch))) {
 			targetChanges.addAll(targetNode.getChanges());
 		}
 
@@ -121,9 +123,8 @@ public class DependencyBuilder {
 			alreadyPortedTicketIds.remove(Utils.getTicketId(change.getMessage()));
 		}
 
-		String sourcePrefix = _sourceBranch + "/";
-		int sourcePrefixLength = sourcePrefix.length();
-		for (Node sourceNode : nodesWithPrefix(sourcePrefix, history.getTouchedNodes())) {
+		int sourcePrefixLength = _sourceBranch.length() + 1;
+		for (Node sourceNode : fileNodes(history.getNodes(_sourceBranch))) {
 			String path = sourceNode.getPath();
 
 			if (_modules != null) {
@@ -190,18 +191,13 @@ public class DependencyBuilder {
 		}
 	}
 
-	private Iterable<Node> nodesWithPrefix(String prefix, Collection<Node> nodes) {
+	private Iterable<Node> fileNodes(Collection<Node> nodes) {
 		ArrayList<Node> result = new ArrayList<>();
 		for (Node node : nodes) {
 			if (node.getKind() != Kind.FILE) {
 				// Conflicts are only relevant on files, not directories. On directories, only
 				// property conflicts may occur, which are most probable "conflicts" in
 				// svn:mergeinfo, which is always resolved automatically.
-				continue;
-			}
-
-			String path = node.getPath();
-			if (!path.startsWith(prefix)) {
 				continue;
 			}
 
