@@ -98,9 +98,12 @@ public class History {
 		node.delete(change);
 
 		String path = node.getPath();
-		for (Node child : _nodesByPath.values()) {
-			if (child.isAlive() && child.getPath().startsWith(path)) {
-				child.delete(change);
+		if (node.getKind() == Kind.DIR) {
+			// Delete potential children.
+			for (Node child : _nodesByPath.values()) {
+				if (child.isAlive() && child.getPath().startsWith(path)) {
+					child.delete(change);
+				}
 			}
 		}
 	}
