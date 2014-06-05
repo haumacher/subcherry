@@ -84,8 +84,11 @@ public class MergeCommitHandler {
 
 	private Set<Long> _stopOnRevisions;
 
+	private Configuration _config;
+
 	public MergeCommitHandler(MergeHandler mergeHandler, SVNClientManager clientManager, Configuration config) {
 		this._mergeHandler = mergeHandler;
+		_config = config;
 		this._diffClient = clientManager.getDiffClient();
 		if (config.getNoCommit()) {
 			_commitContext = null;
@@ -148,6 +151,10 @@ public class MergeCommitHandler {
 			Map<File, List<SVNConflictDescription>> conflicts = merge.run(_mergeContext);
 			if (!conflicts.isEmpty()) {
 				log(conflicts);
+				if (_config.getNoCommit() && _config.getAutoSkipConflicts()) {
+					System.out.println("Automatically skipping conflicts in [" + logEntry.getRevision() + "].");
+					return;
+				}
 				InputResult result = queryCommit(commit, "commit");
 				switch (result) {
 					case SKIP:

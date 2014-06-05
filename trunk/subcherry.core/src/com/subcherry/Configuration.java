@@ -108,4 +108,13 @@ public interface Configuration extends Value {
 
 	}
 
+	/**
+	 * Whether processing does not stop on conflicts.
+	 * 
+	 * <p>
+	 * Requires {@link #getNoCommit()} also be set to <code>true</code>.
+	 * </p>
+	 */
+	boolean getAutoSkipConflicts();
+
 }
