@@ -32,6 +32,7 @@ import org.tmatesoft.svn.core.wc2.SvnTarget;
 
 import com.subcherry.AdditionalRevision;
 import com.subcherry.Configuration;
+import com.subcherry.history.ChangeType;
 import com.subcherry.utils.Log;
 import com.subcherry.utils.Utils;
 
@@ -354,7 +355,9 @@ public class MergeHandler extends Handler {
 			throws SVNException {
 		Map<String, SvnMerge> resourcesByName = new HashMap<>();
 		Map<String, SVNLogEntryPath> changedPaths = _logEntry.getChangedPaths();
-		for (String changedPath : changedPaths.keySet()) {
+		for (Entry<String, SVNLogEntryPath> entry : changedPaths.entrySet()) {
+			String changedPath = entry.getKey();
+
 			int moduleStartIndex = getModuleStartIndex(changedPath);
 	
 			if (moduleStartIndex < 0) {
@@ -371,7 +374,8 @@ public class MergeHandler extends Handler {
 				String branch = getBranch(changedPath, moduleStartIndex);
 				String urlPrefix = _config.getSvnURL() + branch;
 	
-				SvnMerge operation = createMerge(resourceName, urlPrefix);
+				SvnMerge operation =
+					createMerge(ChangeType.fromSvn(entry.getValue().getType()), resourceName, urlPrefix);
 
 				resourcesByName.put(resourceName, operation);
 			}
@@ -380,7 +384,7 @@ public class MergeHandler extends Handler {
 		return resourcesByName.values();
 	}
 
-	private SvnMerge createMerge(String resourceName, String urlPrefix) throws SVNException {
+	private SvnMerge createMerge(ChangeType changeType, String resourceName, String urlPrefix) throws SVNException {
 		SvnMerge merge = operations().createMerge();
 		boolean revert = _config.getRevert();
 		long revision = _logEntry.getRevision();
@@ -396,7 +400,7 @@ public class MergeHandler extends Handler {
 		merge.setSingleTarget(target);
 		
 		SVNURL sourceUrl = SVNURL.parseURIDecoded(urlPrefix + resourceName);
-		SvnTarget source = SvnTarget.fromURL(sourceUrl, startRevision);
+		SvnTarget source = SvnTarget.fromURL(sourceUrl, changeType == ChangeType.DELETED ? startRevision : endRevision);
 		merge.setSource(source, false);
 		SvnRevisionRange range = SvnRevisionRange.create(startRevision, endRevision);
 		merge.addRevisionRange(range);
