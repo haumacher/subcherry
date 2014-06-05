@@ -123,7 +123,6 @@ public class Main {
 		SVNURL url = SVNURL.parseURIDecoded(config().getSvnURL());
 
 		LOG.log(Level.INFO, "Reading source history.");
-		HistroyBuilder sourceHistoryBuilder = new HistroyBuilder(startRevision.getNumber());
 		LogReader logReader = new LogReader(logClient, url);
 
 		logReader.setStartRevision(startRevision);
@@ -132,18 +131,20 @@ public class Main {
 		logReader.setStopOnCopy(false);
 		logReader.setDiscoverChangedPaths(true);
 		logReader.setLimit(NO_LIMIT);
-		logReader.readLog(getLogPaths(sourceBranch), new CombinedLogEntryHandler(logEntryMatcher, sourceHistoryBuilder));
+		String[] sourcePaths = getLogPaths(sourceBranch);
+		logReader.readLog(sourcePaths, logEntryMatcher);
 
 		LOG.log(Level.INFO, "Reading target history.");
-		HistroyBuilder targetHistoryBuilder = new HistroyBuilder(startRevision.getNumber());
-		logReader.readLog(getLogPaths(targetBranch), targetHistoryBuilder);
+		HistroyBuilder historyBuilder = new HistroyBuilder(startRevision.getNumber());
+		String[] targetPaths = getLogPaths(targetBranch);
+		String[] allPaths = concat(sourcePaths, targetPaths);
+		logReader.readLog(allPaths, historyBuilder);
 		
 		LOG.log(Level.INFO, "Analyzing dependencies.");
 		List<SVNLogEntry> mergedLogEntries = logEntryMatcher.getEntries();
 
 		DependencyBuilder dependencyBuilder = new DependencyBuilder(sourceBranch, targetBranch, _modules);
-		dependencyBuilder.analyzeConflicts(sourceHistoryBuilder.getHistory(), targetHistoryBuilder.getHistory(),
-			mergedLogEntries);
+		dependencyBuilder.analyzeConflicts(historyBuilder.getHistory(), mergedLogEntries);
 
 		Map<Change, Dependency> dependencies = dependencyBuilder.getDependencies();
 		if (!dependencies.isEmpty()) {
@@ -241,6 +242,13 @@ public class Main {
 		mergeCommitHandler.run(commitSets);
 
 		Restart.clear();
+	}
+
+	private static String[] concat(String[] s1, String[] s2) {
+		String[] result = new String[s1.length + s2.length];
+		System.arraycopy(s1, 0, result, 0, s1.length);
+		System.arraycopy(s2, 0, result, s1.length, s2.length);
+		return result;
 	}
 
 	private static boolean matches(Pattern pattern, String text) {

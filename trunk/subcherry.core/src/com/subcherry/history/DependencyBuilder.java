@@ -98,10 +98,16 @@ public class DependencyBuilder {
 		_modules = modules;
 	}
 
-	public void analyzeConflicts(History sourceHistory, History targetHistory, List<SVNLogEntry> mergeLog) {
+	public void analyzeConflicts(History history, List<SVNLogEntry> mergeLog) {
+		Set<Change> targetChanges = new HashSet<>();
+		String targetPrefix = _targetBranch + "/";
+		for (Node targetNode : nodesWithPrefix(targetPrefix, history.getTouchedNodes())) {
+			targetChanges.addAll(targetNode.getChanges());
+		}
+
 		Set<String> alreadyPortedTicketIds = new HashSet<>();
-		for (Change targetChange : targetHistory.getChangesByRevision().values()) {
-			String id = Utils.getTicketId(targetChange.getMessage());
+		for (Change change : targetChanges) {
+			String id = Utils.getTicketId(change.getMessage());
 			if (id != null) {
 				alreadyPortedTicketIds.add(id);
 			}
@@ -109,7 +115,7 @@ public class DependencyBuilder {
 
 		Map<Long, Change> mergedChanges = new HashMap<>();
 		for (SVNLogEntry logEntry : mergeLog) {
-			Change change = sourceHistory.getChange(logEntry.getRevision());
+			Change change = history.getChange(logEntry.getRevision());
 			mergedChanges.put(change.getRevision(), change);
 
 			alreadyPortedTicketIds.remove(Utils.getTicketId(change.getMessage()));
@@ -117,18 +123,8 @@ public class DependencyBuilder {
 
 		String sourcePrefix = _sourceBranch + "/";
 		int sourcePrefixLength = sourcePrefix.length();
-		for (Node node : sourceHistory.getTouchedNodes()) {
-			if (node.getKind() != Kind.FILE) {
-				// Conflicts are only relevant on files, not directories. On directories, only
-				// property conflicts may occur, which are most probable "conflicts" in
-				// svn:mergeinfo, which is always resolved automatically.
-				continue;
-			}
-
-			String path = node.getPath();
-			if (!path.startsWith(sourcePrefix)) {
-				continue;
-			}
+		for (Node sourceNode : nodesWithPrefix(sourcePrefix, history.getTouchedNodes())) {
+			String path = sourceNode.getPath();
 
 			if (_modules != null) {
 				int moduleEndIndex = path.indexOf('/', sourcePrefixLength);
@@ -142,42 +138,42 @@ public class DependencyBuilder {
 			}
 
 			String targetPath = _targetBranch + path.substring(_sourceBranch.length());
-			Node targetNode = targetHistory.getCurrentNode(node.getKind(), targetPath);
+			Node targetNode = history.getCurrentNode(sourceNode.getKind(), targetPath);
 
-			Map<String, Change> targetChanges;
+			Map<String, Change> targetNodeChanges;
 			if (targetNode == null) {
 				// Does not exist in target branch, all change sets that are not ported are in
 				// conflict.
-				targetChanges = Collections.emptyMap();
+				targetNodeChanges = Collections.emptyMap();
 			} else {
-				targetChanges = new HashMap<>();
+				targetNodeChanges = new HashMap<>();
 				for (Change change : targetNode.getChanges()) {
 					String key = change.getKey();
 					if (key != null) {
-						targetChanges.put(key, change);
+						targetNodeChanges.put(key, change);
 					}
 				}
 			}
 
 			List<Change> merges = new ArrayList<>();
 			List<Change> dependencies = new ArrayList<>();
-			for (Change change : node.getChanges()) {
-				if (mergedChanges.keySet().contains(change.getRevision())) {
-					merges.add(change);
+			for (Change sourceChange : sourceNode.getChanges()) {
+				if (mergedChanges.keySet().contains(sourceChange.getRevision())) {
+					merges.add(sourceChange);
 					if (!dependencies.isEmpty()) {
-						Dependency dependency = mkDependency(change);
-						dependency.add(copy(dependencies), node);
+						Dependency dependency = mkDependency(sourceChange);
+						dependency.add(copy(dependencies), sourceNode);
 					}
 				} else {
 					// The change is not being merged.
-					if (!targetChanges.containsKey(change.getKey())) {
+					if (!targetNodeChanges.containsKey(sourceChange.getKey())) {
 						// There is no equivalent change on the target node.
 
 						// Add the change to the dependency list. If there are following changes
 						// being merged, those are marked as depending on this change.
-						dependencies.add(change);
+						dependencies.add(sourceChange);
 
-						if (alreadyPortedTicketIds.contains(Utils.getTicketId(change.getMessage()))) {
+						if (alreadyPortedTicketIds.contains(Utils.getTicketId(sourceChange.getMessage()))) {
 							// The change is expected to occur on the target node, but does not.
 							// This might be the case, because it only affects functionality that
 							// is first introduced with the changes being currently merged.
@@ -185,13 +181,33 @@ public class DependencyBuilder {
 							// All changes before the missing change are potentially require
 							// re-applying the missing change.
 							for (Change merged : merges) {
-								mkDependency(merged).add(Collections.singleton(change), node);
+								mkDependency(merged).add(Collections.singleton(sourceChange), sourceNode);
 							}
 						}
 					}
 				}
 			}
 		}
+	}
+
+	private Iterable<Node> nodesWithPrefix(String prefix, Collection<Node> nodes) {
+		ArrayList<Node> result = new ArrayList<>();
+		for (Node node : nodes) {
+			if (node.getKind() != Kind.FILE) {
+				// Conflicts are only relevant on files, not directories. On directories, only
+				// property conflicts may occur, which are most probable "conflicts" in
+				// svn:mergeinfo, which is always resolved automatically.
+				continue;
+			}
+
+			String path = node.getPath();
+			if (!path.startsWith(prefix)) {
+				continue;
+			}
+
+			result.add(node);
+		}
+		return result;
 	}
 
 	public Map<Change, Dependency> getDependencies() {
