@@ -378,10 +378,8 @@ public class MergeHandler extends Handler {
 				break;
 			}
 			case ADDED: {
-				if (pathEntry.getCopyPath() != null) {
-					if (!recordOnly) {
-						addOperation(createRemoteAdd(pathEntry, resourceName));
-					}
+				if (!recordOnly) {
+					addOperation(createRemoteAdd(pathEntry, resourceName));
 				}
 				addOperation(createModification(resourceName, urlPrefix, recordOnly));
 				break;
@@ -389,9 +387,7 @@ public class MergeHandler extends Handler {
 			case REPLACED: {
 				if (!recordOnly) {
 					addOperation(createRemove(resourceName));
-					if (pathEntry.getCopyPath() != null) {
-						addOperation(createRemoteAdd(pathEntry, resourceName));
-					}
+					addOperation(createRemoteAdd(pathEntry, resourceName));
 				}
 				addOperation(createModification(resourceName, urlPrefix, recordOnly));
 				break;
@@ -408,7 +404,19 @@ public class MergeHandler extends Handler {
 	}
 
 	private SvnOperation<?> createRemoteAdd(SVNLogEntryPath pathEntry, String resourceName) throws SVNException {
-		SVNRevision revision = SVNRevision.create(pathEntry.getCopyRevision());
+		SVNRevision revision;
+		SvnCopySource copySource;
+		if (pathEntry.getCopyPath() == null) {
+			revision = SVNRevision.create(_logEntry.getRevision());
+			copySource = SvnCopySource.create(
+				SvnTarget.fromURL(SVNURL.parseURIDecoded(_config.getSvnURL() + pathEntry.getPath()), revision),
+				revision);
+		} else {
+			revision = SVNRevision.create(pathEntry.getCopyRevision());
+			copySource = SvnCopySource.create(
+				SvnTarget.fromURL(SVNURL.parseURIDecoded(_config.getSvnURL() + pathEntry.getCopyPath()), revision),
+				revision);
+		}
 
 		SvnCopy copy = operations().createCopy();
 		copy.setRevision(revision);
@@ -416,10 +424,6 @@ public class MergeHandler extends Handler {
 		copy.setMakeParents(true);
 		copy.setFailWhenDstExists(false);
 		copy.setMove(false);
-		SvnCopySource copySource =
-			SvnCopySource.create(
-				SvnTarget.fromURL(SVNURL.parseURIDecoded(_config.getSvnURL() + pathEntry.getCopyPath()), revision),
-				revision);
 		copy.addCopySource(copySource);
 		copy.setSingleTarget(SvnTarget.fromFile(new File(_config.getWorkspaceRoot(), resourceName)));
 
