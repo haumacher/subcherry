@@ -2,7 +2,6 @@ package com.subcherry.merge;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -28,6 +27,7 @@ import org.tmatesoft.svn.core.wc2.SvnMerge;
 import org.tmatesoft.svn.core.wc2.SvnOperation;
 import org.tmatesoft.svn.core.wc2.SvnOperationFactory;
 import org.tmatesoft.svn.core.wc2.SvnRevisionRange;
+import org.tmatesoft.svn.core.wc2.SvnScheduleForRemoval;
 import org.tmatesoft.svn.core.wc2.SvnTarget;
 
 import com.subcherry.AdditionalRevision;
@@ -171,13 +171,18 @@ public class MergeHandler extends Handler {
 				boolean isMove = isDeleted(_logEntry, targetBranch + srcResource);
 				
 				if (_modules.contains(targetModule) && _modules.contains(srcModule)) {
+					File copyFile = new File(_config.getWorkspaceRoot(), srcResource);
+					File targetFile = new File(_config.getWorkspaceRoot(), targetResource);
+
+					if (!copyFile.exists()) {
+						// Locally not present, keep cross branch copy.
+						continue;
+					}
+
 					if (isMove) {
 						excludePaths.add(srcResource);
 					}
 					excludePaths.add(targetResource);
-
-					File copyFile = new File(_config.getWorkspaceRoot(), srcResource);
-					File targetFile = new File(_config.getWorkspaceRoot(), targetResource);
 
 					SvnCopySource copySource =
 						SvnCopySource.create(SvnTarget.fromFile(copyFile), SVNRevision.WORKING);
@@ -208,23 +213,6 @@ public class MergeHandler extends Handler {
 					merge.setSource(mergeSource, false);
 					merge.setSingleTarget(target);
 					_operations.add(merge);
-				}
-			}
-		}
-
-		for (SVNLogEntryPath pathEntry : _logEntry.getChangedPaths().values()) {
-			if (ChangeType.fromSvn(pathEntry.getType()) == ChangeType.DELETED) {
-				String targetPath = pathEntry.getPath();
-				String targetBranch = getBranch(targetPath);
-				String targetResource = getModulePath(targetPath, targetBranch.length());
-
-				if (!excludePaths.contains(targetResource)) {
-					final File targetFile = new File(_config.getWorkspaceRoot(), targetResource);
-					SvnDelete delete = new SvnDelete(operations());
-					delete.setSingleTargetFile(targetFile);
-					_operations.add(delete);
-
-					excludePaths.add(targetResource);
 				}
 			}
 		}
@@ -341,22 +329,11 @@ public class MergeHandler extends Handler {
 	}
 
 	private void addRecordOnly(MergeResourceBuilder builder) throws SVNException {
-		addMerges(recordOnly(createMerges(builder)));
-	}
-
-	private Collection<SvnMerge> recordOnly(Collection<SvnMerge> merges) {
-		for (SvnMerge merge : merges) {
-			merge.setRecordOnly(true);
-		}
-		return merges;
+		createMerges(builder, true);
 	}
 
 	private void addMerges(MergeResourceBuilder builder) throws SVNException {
-		addMerges(createMerges(builder));
-	}
-
-	private void addMerges(Collection<SvnMerge> merges) {
-		_operations.addAll(merges);
+		createMerges(builder, false);
 	}
 
 	private static boolean isDeleted(SVNLogEntry logEntry, String path) {
@@ -369,9 +346,8 @@ public class MergeHandler extends Handler {
 		return type == SVNLogEntryPath.TYPE_DELETED || type == SVNLogEntryPath.TYPE_REPLACED;
 	}
 
-	private Collection<SvnMerge> createMerges(MergeResourceBuilder builder)
-			throws SVNException {
-		Map<String, SvnMerge> resourcesByName = new HashMap<>();
+	private void createMerges(MergeResourceBuilder builder, boolean recordOnly) throws SVNException {
+		Set<String> resourcesNames = new HashSet<>();
 		Map<String, SVNLogEntryPath> changedPaths = _logEntry.getChangedPaths();
 		for (Entry<String, SVNLogEntryPath> entry : changedPaths.entrySet()) {
 			String changedPath = entry.getKey();
@@ -388,22 +364,78 @@ public class MergeHandler extends Handler {
 				continue;
 			}
 	
-			if (!resourcesByName.containsKey(resourceName)) {
+			if (!resourcesNames.contains(resourceName)) {
 				String branch = getBranch(changedPath, moduleStartIndex);
 				String urlPrefix = _config.getSvnURL() + branch;
 	
-				SvnMerge operation =
-					createMerge(ChangeType.fromSvn(entry.getValue().getType()), resourceName, urlPrefix);
-
-				resourcesByName.put(resourceName, operation);
+				addOperation(createModification(resourceName, urlPrefix, recordOnly));
+				resourcesNames.add(resourceName);
 			}
 		}
-	
-		return resourcesByName.values();
 	}
 
-	private SvnMerge createMerge(ChangeType changeType, String resourceName, String urlPrefix) throws SVNException {
+	private void createMerge(SVNLogEntryPath pathEntry, String resourceName, String urlPrefix, boolean recordOnly)
+			throws SVNException {
+		switch (ChangeType.fromSvn(pathEntry.getType())) {
+			case DELETED: {
+				if (!recordOnly) {
+					addOperation(createRemove(resourceName));
+				}
+				break;
+			}
+			case ADDED: {
+				if (pathEntry.getCopyPath() != null) {
+					if (!recordOnly) {
+						addOperation(createRemoteAdd(pathEntry, resourceName));
+					}
+				}
+				addOperation(createModification(resourceName, urlPrefix, recordOnly));
+				break;
+			}
+			case REPLACED: {
+				if (!recordOnly) {
+					addOperation(createRemove(resourceName));
+					if (pathEntry.getCopyPath() != null) {
+						addOperation(createRemoteAdd(pathEntry, resourceName));
+					}
+				}
+				addOperation(createModification(resourceName, urlPrefix, recordOnly));
+				break;
+			}
+			case MODIFIED: {
+				addOperation(createModification(resourceName, urlPrefix, recordOnly));
+				break;
+			}
+		}
+	}
+
+	private void addOperation(SvnOperation<?> operation) {
+		_operations.add(operation);
+	}
+
+	private SvnOperation<?> createRemoteAdd(SVNLogEntryPath pathEntry, String resourceName) throws SVNException {
+		SVNRevision revision = SVNRevision.create(pathEntry.getCopyRevision());
+
+		SvnCopy copy = operations().createCopy();
+		copy.setRevision(revision);
+		copy.setDepth(SVNDepth.INFINITY);
+		copy.setMakeParents(true);
+		copy.setFailWhenDstExists(false);
+		copy.setMove(false);
+		SvnCopySource copySource =
+			SvnCopySource.create(
+				SvnTarget.fromURL(SVNURL.parseURIDecoded(_config.getSvnURL() + pathEntry.getCopyPath()), revision),
+				revision);
+		copy.addCopySource(copySource);
+		copy.setSingleTarget(SvnTarget.fromFile(new File(_config.getWorkspaceRoot(), resourceName)));
+
+		return copy;
+	}
+
+	private SvnOperation<?> createModification(String resourceName, String urlPrefix, boolean recordOnly)
+			throws SVNException {
 		SvnMerge merge = operations().createMerge();
+		merge.setRecordOnly(recordOnly);
 		boolean revert = _config.getRevert();
 		long revision = _logEntry.getRevision();
 		SVNRevision startRevision = SVNRevision.create(revert ? revision : revision - 1);
@@ -418,13 +450,24 @@ public class MergeHandler extends Handler {
 		merge.setSingleTarget(target);
 		
 		SVNURL sourceUrl = SVNURL.parseURIDecoded(urlPrefix + resourceName);
-		SvnTarget source = SvnTarget.fromURL(sourceUrl, changeType == ChangeType.DELETED ? startRevision : endRevision);
+		SvnTarget source = SvnTarget.fromURL(sourceUrl, endRevision);
 		merge.setSource(source, false);
 		SvnRevisionRange range = SvnRevisionRange.create(startRevision, endRevision);
 		merge.addRevisionRange(range);
 		
 		merge.setIgnoreAncestry(revert);
 		return merge;
+	}
+
+	private SvnOperation<?> createRemove(String resourceName) {
+		File targetFile = new File(_config.getWorkspaceRoot(), resourceName);
+
+		SvnScheduleForRemoval remove = operations().createScheduleForRemoval();
+		remove.setSingleTarget(SvnTarget.fromFile(targetFile));
+		remove.setForce(true);
+		remove.setDeleteFiles(true);
+		remove.setDryRun(false);
+		return remove;
 	}
 
 	private String getBranch(String changedPath) {

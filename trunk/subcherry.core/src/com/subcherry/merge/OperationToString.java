@@ -26,6 +26,7 @@ import org.tmatesoft.svn.core.wc2.SvnCopySource;
 import org.tmatesoft.svn.core.wc2.SvnMerge;
 import org.tmatesoft.svn.core.wc2.SvnOperation;
 import org.tmatesoft.svn.core.wc2.SvnRevisionRange;
+import org.tmatesoft.svn.core.wc2.SvnScheduleForRemoval;
 import org.tmatesoft.svn.core.wc2.SvnTarget;
 
 public class OperationToString {
@@ -37,17 +38,17 @@ public class OperationToString {
 		if (op instanceof SvnCopy) {
 			return toStringCopy((SvnCopy) op);
 		}
-		if (op instanceof SvnDelete) {
-			return toStringDelete((SvnDelete) op);
+		if (op instanceof SvnScheduleForRemoval) {
+			return toStringRemove((SvnScheduleForRemoval) op);
 		}
 	
 		return op.toString();
 	}
 
-	public static String toStringDelete(SvnDelete delete) {
+	public static String toStringRemove(SvnScheduleForRemoval remove) {
 		StringBuilder buffer = new StringBuilder();
 		buffer.append("svn delete");
-		appendTargets(buffer, delete.getTargets());
+		appendTargets(buffer, remove.getTargets());
 		return buffer.toString();
 	}
 
