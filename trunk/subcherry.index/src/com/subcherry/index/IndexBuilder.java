@@ -37,6 +37,8 @@ import org.tmatesoft.svn.core.SVNLogEntry;
 import org.tmatesoft.svn.core.SVNLogEntryPath;
 import org.tmatesoft.svn.core.SVNNodeKind;
 
+import com.subcherry.history.ChangeType;
+
 public class IndexBuilder implements Closeable, Flushable {
 
 	private static final Comparator<SVNLogEntryPath> PATH_ORDER = new Comparator<SVNLogEntryPath>() {
