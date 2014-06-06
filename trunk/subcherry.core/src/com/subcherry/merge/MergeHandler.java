@@ -128,11 +128,11 @@ public class MergeHandler extends Handler {
 				String targetModule = getModuleName(targetPath, targetBranch.length());
 				String targetResource = getModulePath(targetPath, targetBranch.length());
 				
-				SVNLogEntry logEntry = _logEntry;
+				SVNLogEntry mergedLogEntry = _logEntry;
 				String srcBranch = getBranch(srcPath);
 				String origTargetPath = targetPath;
+				SVNLogEntryPath mergedPathEntry = pathEntry;
 				if (!srcBranch.equals(targetBranch)) {
-					SVNLogEntryPath mergedPathEntry = pathEntry;
 					while (true) {
 						SVNLogEntry origEntry = loadRevision(mergedPathEntry.getCopyRevision());
 						SVNLogEntryPath origPathEntry = origEntry.getChangedPaths().get(srcPath);
@@ -150,7 +150,7 @@ public class MergeHandler extends Handler {
 
 						String srcBranch2 = getBranch(srcPath2);
 
-						logEntry = origEntry;
+						mergedLogEntry = origEntry;
 						mergedPathEntry = origPathEntry;
 						srcPath = srcPath2;
 
@@ -163,7 +163,7 @@ public class MergeHandler extends Handler {
 					}
 				}
 
-				long revision = logEntry.getRevision();
+				long mergedRevision = mergedLogEntry.getRevision();
 
 				String srcModule = getModuleName(srcPath, srcBranch.length());
 				String srcResource = getModulePath(srcPath, srcBranch.length());
@@ -179,27 +179,90 @@ public class MergeHandler extends Handler {
 						continue;
 					}
 
+					long copiedRevision = mergedPathEntry.getCopyRevision();
+					if (copiedRevision < mergedRevision - 1) {
+						// The copy potentially is a revert.
+						class Counter implements ISVNLogEntryHandler {
+							private int _cnt;
+
+							@Override
+							public void handleLogEntry(SVNLogEntry logEntry) throws SVNException {
+								_cnt++;
+							}
+
+							public int getCnt() {
+								return _cnt;
+							}
+						}
+						Counter counter = new Counter();
+						SVNRevision beforeMergedSvnRevision = SVNRevision.create(mergedRevision - 1);
+						SVNRevision afterCopiedRevision = SVNRevision.create(copiedRevision + 1);
+						SVNRevision copiedSvnRevision = SVNRevision.create(copiedRevision);
+						_clientManager.getLogClient().doLog(SVNURL.parseURIDecoded(_config.getSvnURL()),
+							new String[] { srcPath }, copiedSvnRevision, beforeMergedSvnRevision,
+							afterCopiedRevision, true, false, false, 0, NO_PROPERTIES,
+							counter);
+						if (counter.getCnt() > 0) {
+							// There was a commit on the copied resource between the merged revision
+							// and the revision from which was copied from. De-facto, this commit
+							// reverts the copied resource to a version not currently alive. Such
+							// revert cannot be easily done within the current working copy, because
+							// it is unclear what is the corrensponding revision, to which the
+							// copied file should be reverted.
+
+							// TODO: The revert should be transformed to a file-system copy of the
+							// contents of the previous version (the copy source) into the target
+							// resouce plus applying the changes in the merged revision.
+							continue;
+						}
+					}
 					if (isMove) {
 						excludePaths.add(srcResource);
 					}
 					excludePaths.add(targetResource);
 
-					SvnCopySource copySource =
-						SvnCopySource.create(SvnTarget.fromFile(copyFile), SVNRevision.WORKING);
 					SvnTarget target = SvnTarget.fromFile(targetFile);
 
-					SvnCopy copy = operations().createCopy();
-					copy.setRevision(SVNRevision.WORKING);
-					copy.setDepth(SVNDepth.INFINITY);
-					copy.setMakeParents(true);
-					copy.setFailWhenDstExists(false);
-					copy.setMove(isMove);
-					copy.addCopySource(copySource);
-					copy.setSingleTarget(target);
-					_operations.add(copy);
+					if (srcResource.equals(targetResource)) {
+						// A resource was copied to itself. This is useful for reverting a path to
+						// an older version. Since such revert cannot easily be transformed to an
+						// operation in the current working copy (see above), at this location, the
+						// self-copy is a no-op. Only a potential modification that is done along
+						// with the copy must be merged to the destination.
+						SvnMerge merge = operations().createMerge();
+						boolean revert = _config.getRevert();
+						SVNRevision startRevision = SVNRevision.create(revert ? mergedRevision : mergedRevision - 1);
+						SVNRevision endRevision = SVNRevision.create(revert ? mergedRevision - 1 : mergedRevision);
 
-					SVNRevision revisionBefore = SVNRevision.create(revision - 1);
-					SVNRevision changeRevision = SVNRevision.create(revision);
+						merge.setMergeOptions(mergeOptions());
+						/* Must allow as otherwise the whole workspace is checked for revisions
+						 * which costs much time */
+						merge.setAllowMixedRevisions(true);
+						merge.setSingleTarget(target);
+
+						SVNURL sourceUrl = SVNURL.parseURIDecoded(_config.getSvnURL() + srcPath);
+						merge.setSource(SvnTarget.fromURL(sourceUrl, endRevision), false);
+						merge.addRevisionRange(SvnRevisionRange.create(startRevision, endRevision));
+
+						merge.setIgnoreAncestry(revert);
+						addOperation(merge);
+					} else {
+						SvnCopySource copySource =
+							SvnCopySource.create(SvnTarget.fromFile(copyFile), SVNRevision.WORKING);
+
+						SvnCopy copy = operations().createCopy();
+						copy.setRevision(SVNRevision.WORKING);
+						copy.setDepth(SVNDepth.INFINITY);
+						copy.setMakeParents(true);
+						copy.setFailWhenDstExists(false);
+						copy.setMove(isMove);
+						copy.addCopySource(copySource);
+						copy.setSingleTarget(target);
+						_operations.add(copy);
+					}
+
+					SVNRevision revisionBefore = SVNRevision.create(mergedRevision - 1);
+					SVNRevision changeRevision = SVNRevision.create(mergedRevision);
 
 					SVNURL origTargetUrl =
 						SVNURL.parseURIDecoded(_config.getSvnURL() + origTargetPath);
