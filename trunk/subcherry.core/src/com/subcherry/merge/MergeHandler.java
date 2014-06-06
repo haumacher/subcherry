@@ -391,11 +391,11 @@ public class MergeHandler extends Handler {
 		return originalChange;
 	}
 
-	private void addRecordOnly(MergeResourceBuilder builder) throws SVNException {
+	private void addRecordOnly(MergeBuilder builder) throws SVNException {
 		createMerges(builder, true);
 	}
 
-	private void addMerges(MergeResourceBuilder builder) throws SVNException {
+	private void addMerges(MergeBuilder builder) throws SVNException {
 		createMerges(builder, false);
 	}
 
@@ -409,7 +409,7 @@ public class MergeHandler extends Handler {
 		return type == SVNLogEntryPath.TYPE_DELETED || type == SVNLogEntryPath.TYPE_REPLACED;
 	}
 
-	private void createMerges(MergeResourceBuilder builder, boolean recordOnly) throws SVNException {
+	private void createMerges(MergeBuilder builder, boolean recordOnly) throws SVNException {
 		Map<String, SVNLogEntryPath> changedPaths = _logEntry.getChangedPaths();
 		for (Entry<String, SVNLogEntryPath> entry : changedPaths.entrySet()) {
 			String changedPath = entry.getKey();
@@ -420,14 +420,16 @@ public class MergeHandler extends Handler {
 				Log.warning("Path does not match the branch pattern: " + changedPath);
 				continue;
 			}
-	
-			builder.buildMerge(pathEntry, moduleStartIndex, recordOnly);
+
+			String branch = getBranch(changedPath, moduleStartIndex);
+			String moduleName = getModuleName(changedPath, moduleStartIndex);
+			String modulePath = getModulePath(changedPath, moduleStartIndex);
+
+			builder.buildMerge(pathEntry, branch, moduleName, modulePath, recordOnly);
 		}
 	}
 
-	String createUrlPrefix(SVNLogEntryPath pathEntry, int moduleStartIndex) {
-		String changedPath = pathEntry.getPath();
-		String branch = getBranch(changedPath, moduleStartIndex);
+	String createUrlPrefix(String branch) {
 		return _config.getSvnURL() + branch;
 	}
 
@@ -539,14 +541,14 @@ public class MergeHandler extends Handler {
 		return changedPath.substring(0, moduleStartIndex);
 	}
 
-	abstract class MergeResourceBuilder {
+	abstract class MergeBuilder {
 
-		public abstract void buildMerge(SVNLogEntryPath pathEntry, int moduleStartIndex, boolean recordOnly)
-				throws SVNException;
+		public abstract void buildMerge(SVNLogEntryPath pathEntry, String branch, String moduleName, String modulePath,
+				boolean recordOnly) throws SVNException;
 
 	}
 
-	class CompleteModuleChangeSetBuilder extends MergeResourceBuilder {
+	class CompleteModuleChangeSetBuilder extends MergeBuilder {
 
 		Set<String> _mergedModules = new HashSet<>();
 
@@ -555,10 +557,8 @@ public class MergeHandler extends Handler {
 		}
 
 		@Override
-		public void buildMerge(SVNLogEntryPath pathEntry, int moduleStartIndex, boolean recordOnly)
-				throws SVNException {
-			String changedPath = pathEntry.getPath();
-			String moduleName = getModuleName(changedPath, moduleStartIndex);
+		public void buildMerge(SVNLogEntryPath pathEntry, String branch, String moduleName, String modulePath,
+				boolean recordOnly) throws SVNException {
 			if (!_modules.contains(moduleName)) {
 				return;
 			}
@@ -567,8 +567,7 @@ public class MergeHandler extends Handler {
 			}
 			_mergedModules.add(moduleName);
 
-			String urlPrefix = createUrlPrefix(pathEntry, moduleStartIndex);
-			addOperation(createModification(moduleName, urlPrefix, recordOnly));
+			addOperation(createModification(moduleName, createUrlPrefix(branch), recordOnly));
 		}
 	}
 
@@ -580,7 +579,7 @@ public class MergeHandler extends Handler {
 		return changedPath.substring(moduleStartIndex, moduleEndIndex);
 	}
 
-	class PartialChangeSetBuilder extends MergeResourceBuilder {
+	class PartialChangeSetBuilder extends MergeBuilder {
 
 		private Set<String> _includePaths;
 
@@ -589,22 +588,19 @@ public class MergeHandler extends Handler {
 		}
 
 		@Override
-		public void buildMerge(SVNLogEntryPath pathEntry, int moduleStartIndex, boolean recordOnly)
-				throws SVNException {
-			String changedPath = pathEntry.getPath();
-			String modulePath = getModulePath(changedPath, moduleStartIndex);
+		public void buildMerge(SVNLogEntryPath pathEntry, String branch, String moduleName, String modulePath,
+				boolean recordOnly) throws SVNException {
 			if (!_includePaths.contains(modulePath)) {
 				// Skip path.
 				return;
 			}
 
-			String urlPrefix = createUrlPrefix(pathEntry, moduleStartIndex);
+			String urlPrefix = createUrlPrefix(branch);
 			addMergeOperations(pathEntry, modulePath, urlPrefix, recordOnly);
 		}
-
 	}
 
-	class ExplicitPathChangeSetBuilder extends MergeResourceBuilder {
+	class ExplicitPathChangeSetBuilder extends MergeBuilder {
 
 		private Set<String> _excludePaths;
 
@@ -613,21 +609,18 @@ public class MergeHandler extends Handler {
 		}
 
 		@Override
-		public void buildMerge(SVNLogEntryPath pathEntry, int moduleStartIndex, boolean recordOnly)
-				throws SVNException {
-			String changedPath = pathEntry.getPath();
-			String module = getModuleName(changedPath, moduleStartIndex);
-			if (!_modules.contains(module)) {
+		public void buildMerge(SVNLogEntryPath pathEntry, String branch, String moduleName, String modulePath,
+				boolean recordOnly) throws SVNException {
+			if (!_modules.contains(moduleName)) {
 				return;
 			}
 
-			String modulePath = getModulePath(changedPath, moduleStartIndex);
 			if (_excludePaths.contains(modulePath)) {
 				// Skip path.
 				return;
 			}
 			
-			String urlPrefix = createUrlPrefix(pathEntry, moduleStartIndex);
+			String urlPrefix = createUrlPrefix(branch);
 			addMergeOperations(pathEntry, modulePath, urlPrefix, recordOnly);
 		}
 
