@@ -137,8 +137,10 @@ public class MergeHandler extends Handler {
 
 			movedPath:
 			{
+				if (srcPath == null) {
+					break movedPath;
+				}
 
-			if (srcPath != null) {
 				String targetPath = pathEntry.getPath();
 				String targetBranch = getBranch(targetPath);
 				String targetModule = getModuleName(targetPath, targetBranch.length());
@@ -192,7 +194,7 @@ public class MergeHandler extends Handler {
 
 					if (!copyFile.exists()) {
 						// Locally not present, keep cross branch copy.
-						continue;
+							break movedPath;
 					}
 
 					long copiedRevision = mergedPathEntry.getCopyRevision();
@@ -229,7 +231,7 @@ public class MergeHandler extends Handler {
 							// TODO: The revert should be transformed to a file-system copy of the
 							// contents of the previous version (the copy source) into the target
 							// resouce plus applying the changes in the merged revision.
-							continue;
+							break movedPath;
 						}
 					}
 					if (isMove) {
@@ -292,21 +294,23 @@ public class MergeHandler extends Handler {
 					merge.setSingleTarget(target);
 					_operations.add(merge);
 				}
+
+				// Moved path was handled especially.
+				continue;
 			}
 
-				continue;
-		}
-
 			// Path must be treated as regular merge.
+			{
+				String path = pathEntry.getPath();
+				String branch = getBranch(path);
+				String resource = getModulePath(path, branch.length());
+				String module = getModuleName(path, branch.length());
 
-			String srcBranch = getBranch(srcPath);
-			String srcResource = getModulePath(srcPath, srcBranch.length());
-			String srcModule = getModuleName(srcPath, srcBranch.length());
-
-			// Prevent merging the whole module (if, e.g. merge info is merged for the module),
-			// since this would produce conflicts with the explicitly merged moves and copies.
-			if (!_modules.contains(srcResource)) {
-				builder.buildMerge(pathEntry, srcBranch, srcModule, srcResource, false);
+				// Prevent merging the whole module (if, e.g. merge info is merged for the module),
+				// since this would produce conflicts with the explicitly merged moves and copies.
+				if (!_modules.contains(resource)) {
+					builder.buildMerge(pathEntry, branch, module, resource, false);
+				}
 			}
 		}
 
