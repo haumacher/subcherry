@@ -99,29 +99,42 @@ public class MergeHandler extends Handler {
 		}
 		
 		if (includePaths == null) {
-			Set<String> excludePaths = handleMoves();
-
-			if (excludePaths.isEmpty()) {
-				addMerges(new CompleteModuleChangeSetBuilder());
-			} else {
-				// Prevent merging the whole module (if, e.g. merge info is merged for the module),
-				// since this would produce conflicts with the explicitly merged moves and copies.
-				excludePaths.addAll(_modules);
-
-				addMerges(new ExplicitPathChangeSetBuilder(excludePaths));
+			boolean hasMoves = handleMoves();
+			if (hasMoves) {
 				addRecordOnly(new CompleteModuleChangeSetBuilder());
+			} else {
+				addMerges(new CompleteModuleChangeSetBuilder());
 			}
 		} else {
 			addMerges(new PartialChangeSetBuilder(includePaths));
 		}
 	}
 
-	private Set<String> handleMoves() throws SVNException {
-		Set<String> excludePaths = new HashSet<>();
+	private boolean hasNoMoves() throws SVNException {
+		for (SVNLogEntryPath pathEntry : _logEntry.getChangedPaths().values()) {
+			if (pathEntry.getCopyPath() != null) {
+				// There is potentially a change that must be treated especially.
+				return false;
+			}
+		}
+		return true;
+	}
 
-		allPaths:
+	private boolean handleMoves() throws SVNException {
+		if (hasNoMoves()) {
+			return false;
+		}
+
+		Set<String> excludePaths = new HashSet<>();
+		MergeBuilder builder = new ExplicitPathChangeSetBuilder(excludePaths);
+		int operationCntBefore = _operations.size();
+
 		for (SVNLogEntryPath pathEntry : _logEntry.getChangedPaths().values()) {
 			String srcPath = pathEntry.getCopyPath();
+
+			movedPath:
+			{
+
 			if (srcPath != null) {
 				String targetPath = pathEntry.getPath();
 				String targetBranch = getBranch(targetPath);
@@ -138,14 +151,14 @@ public class MergeHandler extends Handler {
 						SVNLogEntryPath origPathEntry = origEntry.getChangedPaths().get(srcPath);
 						if (origPathEntry == null) {
 							// Not copied directly from a copy/move changeset.
-							continue allPaths;
+								break movedPath;
 						}
 
 						String srcPath2 = origPathEntry.getCopyPath();
 						if (srcPath2 == null) {
 							// Cannot be followed to an intra-branch copy (was a plain add in the
 							// original change).
-							continue allPaths;
+								break movedPath;
 						}
 
 						String srcBranch2 = getBranch(srcPath2);
@@ -278,9 +291,31 @@ public class MergeHandler extends Handler {
 					_operations.add(merge);
 				}
 			}
+
+				continue;
 		}
 
-		return excludePaths;
+			// Path must be treated as regular merge.
+
+			String srcBranch = getBranch(srcPath);
+			String srcResource = getModulePath(srcPath, srcBranch.length());
+			String srcModule = getModuleName(srcPath, srcBranch.length());
+
+			// Prevent merging the whole module (if, e.g. merge info is merged for the module),
+			// since this would produce conflicts with the explicitly merged moves and copies.
+			if (!_modules.contains(srcResource)) {
+				builder.buildMerge(pathEntry, srcBranch, srcModule, srcResource, false);
+			}
+		}
+
+		boolean noMoves = excludePaths.isEmpty();
+		if (noMoves) {
+			// Revert singleton merges.
+			for (int n = _operations.size(); n > operationCntBefore; n--) {
+				_operations.remove(n - 1);
+			}
+		}
+		return !noMoves;
 	}
 
 	private SVNLogEntry getOriginalChange() throws SVNException {
