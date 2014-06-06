@@ -117,4 +117,10 @@ public interface Configuration extends Value {
 	 */
 	boolean getAutoSkipConflicts();
 
+	/**
+	 * Whether intra-branch moves (and copies) should be merged semantically (as intra-branch move
+	 * in the target branch an applying the changes that happened together with the move).
+	 */
+	boolean getSemanticMoves();
+
 }

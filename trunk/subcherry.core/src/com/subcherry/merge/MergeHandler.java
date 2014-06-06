@@ -102,7 +102,7 @@ public class MergeHandler extends Handler {
 		}
 		
 		if (includePaths == null) {
-			boolean hasMoves = handleMoves();
+			boolean hasMoves = _config.getSemanticMoves() && handleMoves();
 			if (hasMoves) {
 				addRecordOnly(new CompleteModuleChangeSetBuilder());
 			} else {
