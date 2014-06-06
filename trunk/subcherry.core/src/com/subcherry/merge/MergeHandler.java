@@ -2,6 +2,9 @@ package com.subcherry.merge;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -129,7 +132,7 @@ public class MergeHandler extends Handler {
 		MergeBuilder builder = new ExplicitPathChangeSetBuilder(excludePaths);
 		int operationCntBefore = _operations.size();
 
-		for (SVNLogEntryPath pathEntry : _logEntry.getChangedPaths().values()) {
+		for (SVNLogEntryPath pathEntry : pathOrder(_logEntry.getChangedPaths().values())) {
 			String srcPath = pathEntry.getCopyPath();
 
 			movedPath:
@@ -283,7 +286,6 @@ public class MergeHandler extends Handler {
 
 					SvnMerge merge = operations().createMerge();
 					merge.setAllowMixedRevisions(true);
-					merge.setDepth(SVNDepth.EMPTY);
 					merge.setIgnoreAncestry(true);
 					merge.addRevisionRange(SvnRevisionRange.create(revisionBefore, changeRevision));
 					merge.setSource(mergeSource, false);
@@ -316,6 +318,17 @@ public class MergeHandler extends Handler {
 			}
 		}
 		return !noMoves;
+	}
+
+	private List<SVNLogEntryPath> pathOrder(Collection<SVNLogEntryPath> values) {
+		ArrayList<SVNLogEntryPath> result = new ArrayList<>(values);
+		Collections.sort(result, new Comparator<SVNLogEntryPath>() {
+			@Override
+			public int compare(SVNLogEntryPath p1, SVNLogEntryPath p2) {
+				return p1.getPath().compareTo(p2.getPath());
+			}
+		});
+		return result;
 	}
 
 	private SVNLogEntry getOriginalChange() throws SVNException {
