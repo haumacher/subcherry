@@ -140,9 +140,29 @@ public class Main {
 		String[] allPaths = concat(sourcePaths, targetPaths);
 		logReader.readLog(allPaths, historyBuilder);
 		
-		LOG.log(Level.INFO, "Analyzing dependencies.");
 		List<SVNLogEntry> mergedLogEntries = logEntryMatcher.getEntries();
 
+		if (!config().getSkipDependencies()) {
+			analyzeDependencies(historyBuilder, sourceBranch, targetBranch, trac, mergedLogEntries);
+		}
+
+		List<CommitSet> commitSets = getCommitSets(commitHandler, mergedLogEntries);
+		if (config().getReorderCommits()) {
+			reorderCommits(commitSets);
+		}
+		for (CommitSet commitSet : commitSets) {
+			commitSet.print(System.out);
+		}
+		Log.info("Start merging " + mergedLogEntries.size() + " revisions.");
+
+		mergeCommitHandler.run(commitSets);
+
+		Restart.clear();
+	}
+
+	private static void analyzeDependencies(HistroyBuilder historyBuilder, String sourceBranch, String targetBranch,
+			TracConnection trac, List<SVNLogEntry> mergedLogEntries) throws IOException {
+		LOG.log(Level.INFO, "Analyzing dependencies.");
 		DependencyBuilder dependencyBuilder = new DependencyBuilder(sourceBranch, targetBranch, _modules);
 		dependencyBuilder.analyzeConflicts(historyBuilder.getHistory(), mergedLogEntries);
 
@@ -229,19 +249,6 @@ public class Main {
 				}
 			}
 		}
-
-		List<CommitSet> commitSets = getCommitSets(commitHandler, mergedLogEntries);
-		if (config().getReorderCommits()) {
-			reorderCommits(commitSets);
-		}
-		for (CommitSet commitSet : commitSets) {
-			commitSet.print(System.out);
-		}
-		Log.info("Start merging " + mergedLogEntries.size() + " revisions.");
-
-		mergeCommitHandler.run(commitSets);
-
-		Restart.clear();
 	}
 
 	private static String[] concat(String[] s1, String[] s2) {

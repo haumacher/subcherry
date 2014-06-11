@@ -123,4 +123,9 @@ public interface Configuration extends Value {
 	 */
 	boolean getSemanticMoves();
 
+	/**
+	 * Whether ticket dependency analysis should be skipped.
+	 */
+	boolean getSkipDependencies();
+
 }
