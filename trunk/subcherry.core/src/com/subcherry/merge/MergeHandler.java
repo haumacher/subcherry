@@ -538,6 +538,11 @@ public class MergeHandler extends Handler {
 
 	void addMergeOperations(SVNLogEntryPath pathEntry, String resourceName, String urlPrefix, boolean recordOnly)
 			throws SVNException {
+		addMergeOperations(pathEntry, resourceName, urlPrefix, recordOnly, false);
+	}
+
+	void addMergeOperations(SVNLogEntryPath pathEntry, String resourceName, String urlPrefix, boolean recordOnly,
+			boolean ignoreAncestry) throws SVNException {
 		switch (ChangeType.fromSvn(pathEntry.getType())) {
 			case DELETED: {
 				if (!recordOnly) {
@@ -549,7 +554,7 @@ public class MergeHandler extends Handler {
 				if (!recordOnly) {
 					addOperation(createRemoteAdd(pathEntry, resourceName));
 				}
-				addOperation(createModification(resourceName, urlPrefix, recordOnly));
+				addOperation(createModification(resourceName, urlPrefix, recordOnly, ignoreAncestry));
 				break;
 			}
 			case REPLACED: {
@@ -557,11 +562,11 @@ public class MergeHandler extends Handler {
 					addOperation(createRemove(resourceName));
 					addOperation(createRemoteAdd(pathEntry, resourceName));
 				}
-				addOperation(createModification(resourceName, urlPrefix, recordOnly));
+				addOperation(createModification(resourceName, urlPrefix, recordOnly, ignoreAncestry));
 				break;
 			}
 			case MODIFIED: {
-				addOperation(createModification(resourceName, urlPrefix, recordOnly));
+				addOperation(createModification(resourceName, urlPrefix, recordOnly, ignoreAncestry));
 				break;
 			}
 		}
@@ -598,7 +603,12 @@ public class MergeHandler extends Handler {
 		return copy;
 	}
 
-	SvnOperation<?> createModification(String resourceName, String urlPrefix, boolean recordOnly)
+	SvnMerge createModification(String resourceName, String urlPrefix, boolean recordOnly)
+			throws SVNException {
+		return createModification(resourceName, urlPrefix, recordOnly, false);
+	}
+
+	SvnMerge createModification(String resourceName, String urlPrefix, boolean recordOnly, boolean ignoreAncestry)
 			throws SVNException {
 		SvnMerge merge = operations().createMerge();
 		merge.setRecordOnly(recordOnly);
@@ -621,7 +631,7 @@ public class MergeHandler extends Handler {
 		SvnRevisionRange range = SvnRevisionRange.create(startRevision, endRevision);
 		merge.addRevisionRange(range);
 		
-		merge.setIgnoreAncestry(revert);
+		merge.setIgnoreAncestry(revert || ignoreAncestry);
 		return merge;
 	}
 
@@ -699,7 +709,7 @@ public class MergeHandler extends Handler {
 			}
 
 			String urlPrefix = createUrlPrefix(branch);
-			addMergeOperations(pathEntry, modulePath, urlPrefix, recordOnly);
+			addMergeOperations(pathEntry, modulePath, urlPrefix, recordOnly, true);
 		}
 	}
 
