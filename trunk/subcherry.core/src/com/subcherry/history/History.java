@@ -71,33 +71,18 @@ public class History {
 		node.modify(change);
 
 		if (copyPath != null) {
-			Node copyNode = lookupNode(kind, copyPath, copyRevision);
-			if (copyNode == null) {
-				if (_startRevision > Node.FIRST) {
-					// History was not recorded for that revision, create a phantom node.
-					copyNode = mkHistoricNode(kind, copyPath, Node.SINCE_EVER, copyRevision);
-
-					// Extends the live-time of the phantom node to the maximum possible.
-					if (copyNode.getLater() == null) {
-						copyNode.setRevMax(Node.HEAD);
-					} else {
-						copyNode.setRevMax(copyNode.getLater().getRevMin() - 1);
-					}
-				} else {
-					throw new AssertionError("Copy node not found: " + copyPath + " in " + copyRevision);
-				}
-			}
+			Node copyNode = mkNode(kind, copyPath, copyRevision);
 			node.setCopyFrom(copyNode, copyRevision);
 		}
 	}
 
 	public void modifiedNode(Kind kind, String path, Change change) {
-		Node node = mkCurrentNode(kind, path, change.getRevision());
+		Node node = mkNode(kind, path, Node.HEAD);
 		node.modify(change);
 	}
 
 	public void deletedNode(Kind kind, String path, Change change) {
-		Node node = mkCurrentNode(kind, path, change.getRevision());
+		Node node = mkNode(kind, path, Node.HEAD);
 		markDeleted(node, change);
 	}
 
@@ -123,20 +108,39 @@ public class History {
 		}
 	}
 
-	Node mkCurrentNode(Kind kind, String path, long revision) {
-		Node node = getCurrentNode(kind, path);
+	Node mkNode(Kind kind, String path, long revision) {
+		Node node = lookupNode(kind, path, revision);
 		if (node != null) {
 			return node;
 		}
-		return createCurrentNode(kind, path, revision);
+		return createPhantomNode(kind, path, revision);
+	}
+
+	private Node createPhantomNode(Kind kind, String path, long revision) throws AssertionError {
+		Node phantomNode;
+		if (_startRevision > Node.FIRST) {
+			// History was not recorded for that revision, create a phantom node.
+			phantomNode = mkHistoricNode(kind, path, revision, revision);
+
+			// Extends the live-time of the phantom node to the maximum possible.
+			if (phantomNode.getLater() == null) {
+				phantomNode.setRevMax(Node.HEAD);
+			} else {
+				phantomNode.setRevMax(phantomNode.getLater().getRevMin() - 1);
+			}
+			if (phantomNode.getBefore() == null) {
+				phantomNode.setRevMin(Node.SINCE_EVER);
+			} else {
+				phantomNode.setRevMin(phantomNode.getBefore().getRevMax() + 1);
+			}
+		} else {
+			throw new AssertionError("Copy node not found: " + path + " in " + revision);
+		}
+		return phantomNode;
 	}
 
 	public Node getCurrentNode(Kind kind, String path) {
-		Node node = lookupNode(kind, path, Node.HEAD);
-		if (node == null || !node.isAlive()) {
-			return null;
-		}
-		return node;
+		return lookupNode(kind, path, Node.HEAD);
 	}
 
 	private Node lookupNode(Kind kind, String path, long revision) {

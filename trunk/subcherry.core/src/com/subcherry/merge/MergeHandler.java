@@ -113,7 +113,7 @@ public class MergeHandler extends Handler {
 		}
 	}
 
-	private boolean hasNoMoves() throws SVNException {
+	private boolean hasNoMoves() {
 		for (SVNLogEntryPath pathEntry : _logEntry.getChangedPaths().values()) {
 			if (pathEntry.getCopyPath() != null) {
 				// There is potentially a change that must be treated especially.
@@ -123,29 +123,43 @@ public class MergeHandler extends Handler {
 		return true;
 	}
 
+	/**
+	 * Creates merge operations that represent semantic moves and copies.
+	 * 
+	 * @return Whether the current changeset has semantic moves or copies.
+	 */
 	private boolean handleMoves() throws SVNException {
 		if (hasNoMoves()) {
+			// Optimization.
 			return false;
 		}
 
-		Set<String> excludePaths = new HashSet<>();
-		MergeBuilder builder = new ExplicitPathChangeSetBuilder(excludePaths);
+		boolean hasMoves = false;
+		Set<String> deletedPaths = new HashSet<>();
+		Set<String> crossMergedPaths = new HashSet<>();
+		MergeBuilder builder = new ExplicitPathChangeSetBuilder();
 		int operationCntBefore = _operations.size();
 
 		for (SVNLogEntryPath pathEntry : pathOrder(_logEntry.getChangedPaths().values())) {
+			final String targetPath = pathEntry.getPath();
+			final String targetBranch = getBranch(targetPath);
+			final String targetModule = getModuleName(targetPath, targetBranch.length());
+			final String targetResource = getModulePath(targetPath, targetBranch.length());
+			if (!_modules.contains(targetModule)) {
+				// The change happened in a module that is not among the merged modules.
+				continue;
+			}
+
+			if (containsAncestorOrSelf(crossMergedPaths, targetResource)) {
+				// The parent directory has been cross-branch copied. Therefore, moves within the
+				// content can no longer be merged semantically.
+				continue;
+			}
+
 			String srcPath = pathEntry.getCopyPath();
 
 			movedPath:
-			{
-				if (srcPath == null) {
-					break movedPath;
-				}
-
-				String targetPath = pathEntry.getPath();
-				String targetBranch = getBranch(targetPath);
-				String targetModule = getModuleName(targetPath, targetBranch.length());
-				String targetResource = getModulePath(targetPath, targetBranch.length());
-				
+			if (srcPath != null) {
 				SVNLogEntry mergedLogEntry = _logEntry;
 				String srcBranch = getBranch(srcPath);
 				String origTargetPath = targetPath;
@@ -194,7 +208,7 @@ public class MergeHandler extends Handler {
 
 					if (!copyFile.exists()) {
 						// Locally not present, keep cross branch copy.
-							break movedPath;
+						break movedPath;
 					}
 
 					long copiedRevision = mergedPathEntry.getCopyRevision();
@@ -234,11 +248,8 @@ public class MergeHandler extends Handler {
 							break movedPath;
 						}
 					}
-					if (isMove) {
-						excludePaths.add(srcResource);
-					}
-					excludePaths.add(targetResource);
 
+					hasMoves = true;
 					SvnTarget target = SvnTarget.fromFile(targetFile);
 
 					if (srcResource.equals(targetResource)) {
@@ -265,11 +276,31 @@ public class MergeHandler extends Handler {
 						merge.setIgnoreAncestry(revert);
 						addOperation(merge);
 					} else {
-						SvnCopySource copySource =
-							SvnCopySource.create(SvnTarget.fromFile(copyFile), SVNRevision.WORKING);
+						SvnCopySource copySource;
+						if (containsAncestorOrSelf(deletedPaths, srcResource)) {
+							// At the time the copy will be performed, some other operation has
+							// already deleted the source of the copy (e.g. when the merged revision
+							// swaps two files). Perform a remote intra-branch copy (from the
+							// current HEAD revision) instead.
+							SVNRevision current = SVNRevision.HEAD;
+							SVNURL remoteSrcResourceInTargetBranch =
+								SVNURL.parseURIDecoded(_config.getSvnURL() + _config.getTargetBranch() + '/'
+									+ srcResource);
+							copySource =
+								SvnCopySource.create(
+									SvnTarget.fromURL(remoteSrcResourceInTargetBranch, current), current);
+							if (isMove) {
+								// Cannot move from remote to local.
+								isMove = false;
+							}
+						} else {
+							copySource = SvnCopySource.create(SvnTarget.fromFile(copyFile), SVNRevision.WORKING);
+							if (isMove) {
+								deletedPaths.add(srcResource);
+							}
+						}
 
 						SvnCopy copy = operations().createCopy();
-						copy.setRevision(SVNRevision.WORKING);
 						copy.setDepth(SVNDepth.INFINITY);
 						copy.setMakeParents(true);
 						copy.setFailWhenDstExists(false);
@@ -306,22 +337,42 @@ public class MergeHandler extends Handler {
 				String resource = getModulePath(path, branch.length());
 				String module = getModuleName(path, branch.length());
 
+				crossMergedPaths.add(resource);
+
 				// Prevent merging the whole module (if, e.g. merge info is merged for the module),
 				// since this would produce conflicts with the explicitly merged moves and copies.
-				if (!_modules.contains(resource)) {
+				if (!_modules.contains(resource) && !containsAncestorOrSelf(deletedPaths, resource)) {
 					builder.buildMerge(pathEntry, branch, module, resource, false);
+
+					if (ChangeType.fromSvn(pathEntry.getType()) == ChangeType.DELETED) {
+						deletedPaths.add(resource);
+					}
 				}
 			}
 		}
 
-		boolean noMoves = excludePaths.isEmpty();
-		if (noMoves) {
+		if (!hasMoves) {
 			// Revert singleton merges.
 			for (int n = _operations.size(); n > operationCntBefore; n--) {
 				_operations.remove(n - 1);
 			}
 		}
-		return !noMoves;
+		return hasMoves;
+	}
+
+	private boolean containsAncestorOrSelf(Set<String> paths, String path) {
+		while (true) {
+			if (paths.contains(path)) {
+				return true;
+			}
+
+			int dirSeparatorIndex = path.lastIndexOf('/');
+			if (dirSeparatorIndex < 0) {
+				return false;
+			}
+
+			path = path.substring(0, dirSeparatorIndex);
+		}
 	}
 
 	private List<SVNLogEntryPath> pathOrder(Collection<SVNLogEntryPath> values) {
@@ -653,25 +704,9 @@ public class MergeHandler extends Handler {
 	}
 
 	class ExplicitPathChangeSetBuilder extends MergeBuilder {
-
-		private Set<String> _excludePaths;
-
-		public ExplicitPathChangeSetBuilder(Set<String> excludePaths) {
-			_excludePaths = excludePaths;
-		}
-
 		@Override
 		public void buildMerge(SVNLogEntryPath pathEntry, String branch, String moduleName, String modulePath,
 				boolean recordOnly) throws SVNException {
-			if (!_modules.contains(moduleName)) {
-				return;
-			}
-
-			if (_excludePaths.contains(modulePath)) {
-				// Skip path.
-				return;
-			}
-			
 			String urlPrefix = createUrlPrefix(branch);
 			addMergeOperations(pathEntry, modulePath, urlPrefix, recordOnly);
 		}

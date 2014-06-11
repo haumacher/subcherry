@@ -92,7 +92,7 @@ public class Node {
 
 	private final List<Change> _changes = new ArrayList<>();
 
-	private final long _revMin;
+	private long _revMin;
 
 	private long _revMax;
 
@@ -149,6 +149,10 @@ public class Node {
 
 	public long getRevMin() {
 		return _revMin;
+	}
+
+	public void setRevMin(long revMin) {
+		_revMin = revMin;
 	}
 
 	public boolean isAlive() {
