@@ -181,9 +181,9 @@ public class MergeHandler extends Handler {
 
 				SVNLogEntryPath mergedResourceChange = mergedChange.getChange();
 				String origTargetPath = mergedResourceChange.getPath();
+
 				String srcPath = mergedResourceChange.getCopyPath();
 				String srcBranch = getBranch(srcPath);
-
 				String srcModule = getModuleName(srcPath, srcBranch.length());
 				String srcResource = getModulePath(srcPath, srcBranch.length());
 
@@ -202,27 +202,8 @@ public class MergeHandler extends Handler {
 					long copiedRevision = mergedResourceChange.getCopyRevision();
 					if (copiedRevision < mergedRevision - 1) {
 						// The copy potentially is a revert.
-						class Counter implements ISVNLogEntryHandler {
-							private int _cnt;
-
-							@Override
-							public void handleLogEntry(SVNLogEntry logEntry) throws SVNException {
-								_cnt++;
-							}
-
-							public int getCnt() {
-								return _cnt;
-							}
-						}
-						Counter counter = new Counter();
-						SVNRevision beforeMergedSvnRevision = SVNRevision.create(mergedRevision - 1);
-						SVNRevision afterCopiedRevision = SVNRevision.create(copiedRevision + 1);
-						SVNRevision copiedSvnRevision = SVNRevision.create(copiedRevision);
-						_clientManager.getLogClient().doLog(SVNURL.parseURIDecoded(_config.getSvnURL()),
-							new String[] { srcPath }, copiedSvnRevision, beforeMergedSvnRevision,
-							afterCopiedRevision, true, false, false, 0, NO_PROPERTIES,
-							counter);
-						if (counter.getCnt() > 0) {
+						int changeCount = getChangeCount(srcPath, copiedRevision, mergedRevision);
+						if (changeCount > 0) {
 							// There was a commit on the copied resource between the merged revision
 							// and the revision from which was copied from. De-facto, this commit
 							// reverts the copied resource to a version not currently alive. Such
@@ -319,6 +300,42 @@ public class MergeHandler extends Handler {
 			}
 		}
 		return hasMoves;
+	}
+
+	/**
+	 * The number of changes on the given path between the copy source revision and the revision
+	 * performing the copy.
+	 * 
+	 * @param path
+	 *        The tested path.
+	 * @param copiedRevision
+	 *        The source revision of the copy.
+	 * @param mergedRevision
+	 *        The revision committing the copy.
+	 * @return The number of changes to the given path between the two given revisions (exclusive).
+	 */
+	private int getChangeCount(String path, long copiedRevision, long mergedRevision) throws SVNException {
+		class Counter implements ISVNLogEntryHandler {
+			private int _cnt;
+
+			@Override
+			public void handleLogEntry(SVNLogEntry intermediateChange) throws SVNException {
+				_cnt++;
+			}
+
+			public int getCnt() {
+				return _cnt;
+			}
+		}
+		Counter counter = new Counter();
+		SVNRevision beforeMergedSvnRevision = SVNRevision.create(mergedRevision - 1);
+		SVNRevision afterCopiedRevision = SVNRevision.create(copiedRevision + 1);
+		SVNRevision copiedSvnRevision = SVNRevision.create(copiedRevision);
+		_clientManager.getLogClient().doLog(SVNURL.parseURIDecoded(_config.getSvnURL()),
+			new String[] { path }, copiedSvnRevision, beforeMergedSvnRevision,
+			afterCopiedRevision, true, false, false, 0, NO_PROPERTIES,
+			counter);
+		return counter.getCnt();
 	}
 
 	private void directMerge(SVNLogEntryPath pathEntry) throws SVNException {
