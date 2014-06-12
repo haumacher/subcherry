@@ -63,6 +63,12 @@ public class MergeHandler extends Handler {
 
 	private Map<SVNRevision, SVNLogEntry> _additionalRevisions = new HashMap<>();
 
+	private Set<String> _deletedPaths;
+
+	private Set<String> _crossMergedPaths;
+
+	private final MergeBuilder _explicitPathChangeSetBuilder = new ExplicitPathChangeSetBuilder();
+
 	public MergeHandler(SVNClientManager clientManager, Configuration config, Set<String> modules) {
 		super(config);
 		_clientManager = clientManager;
@@ -84,6 +90,8 @@ public class MergeHandler extends Handler {
 	public Merge parseMerge(SVNLogEntry logEntry) throws SVNException {
 		_logEntry = logEntry;
 		_operations = new ArrayList<>();
+		_deletedPaths = new HashSet<>();
+		_crossMergedPaths = new HashSet<>();
 
 		// It is not probable that multiple change sets require the same copy revision.
 		_additionalRevisions.clear();
@@ -135,9 +143,6 @@ public class MergeHandler extends Handler {
 		}
 
 		boolean hasMoves = false;
-		Set<String> deletedPaths = new HashSet<>();
-		Set<String> crossMergedPaths = new HashSet<>();
-		MergeBuilder builder = new ExplicitPathChangeSetBuilder();
 		int operationCntBefore = _operations.size();
 
 		SVNLogEntry logEntry = _logEntry;
@@ -147,22 +152,29 @@ public class MergeHandler extends Handler {
 			final String targetModule = getModuleName(targetPath, targetBranch.length());
 			final String targetResource = getModulePath(targetPath, targetBranch.length());
 			if (!_modules.contains(targetModule)) {
-				// The change happened in a module that is not among the merged modules.
+				// The change happened in a module that is not among the merged modules, drop the
+				// change.
 				continue;
 			}
 
-			if (containsAncestorOrSelf(crossMergedPaths, targetResource)) {
+			if (containsAncestorOrSelf(_crossMergedPaths, targetResource)) {
 				// The parent directory has been cross-branch copied. Therefore, moves within the
 				// content can no longer be merged semantically.
+				directMerge(pathEntry);
 				continue;
 			}
 
+			if (pathEntry.getCopyPath() == null) {
+				// Plain add or modify, no source specified. Merge directly.
+				directMerge(pathEntry);
+				continue;
+			}
 
-			movedPath:
-			if (pathEntry.getCopyPath() != null) {
+			{
 				ResourceChange mergedChange = getMergeSources(new ResourceChange(logEntry, pathEntry), targetBranch);
 				if (mergedChange == null) {
-					break movedPath;
+					directMerge(pathEntry);
+					continue;
 				}
 
 				long mergedRevision = mergedChange.getChangeSet().getRevision();
@@ -183,7 +195,8 @@ public class MergeHandler extends Handler {
 
 					if (!copyFile.exists()) {
 						// Locally not present, keep cross branch copy.
-						break movedPath;
+						directMerge(pathEntry);
+						continue;
 					}
 
 					long copiedRevision = mergedResourceChange.getCopyRevision();
@@ -220,7 +233,8 @@ public class MergeHandler extends Handler {
 							// TODO: The revert should be transformed to a file-system copy of the
 							// contents of the previous version (the copy source) into the target
 							// resouce plus applying the changes in the merged revision.
-							break movedPath;
+							directMerge(pathEntry);
+							continue;
 						}
 					}
 
@@ -251,9 +265,9 @@ public class MergeHandler extends Handler {
 						merge.setIgnoreAncestry(revert);
 						addOperation(merge);
 					} else {
-						boolean alreadyDeleted = containsAncestorOrSelf(deletedPaths, srcResource);
+						boolean alreadyDeleted = containsAncestorOrSelf(_deletedPaths, srcResource);
 						if (isMove) {
-							deletedPaths.add(srcResource);
+							_deletedPaths.add(srcResource);
 						}
 
 						SvnCopySource copySource =
@@ -295,32 +309,6 @@ public class MergeHandler extends Handler {
 					merge.setSingleTarget(target);
 					_operations.add(merge);
 				}
-
-				// Moved path was handled especially.
-				continue;
-			}
-
-			// Path must be treated as regular merge.
-			{
-				String path = pathEntry.getPath();
-				String branch = getBranch(path);
-				String resource = getModulePath(path, branch.length());
-				String module = getModuleName(path, branch.length());
-				ChangeType changeType = ChangeType.fromSvn(pathEntry.getType());
-
-				if (changeType == ChangeType.ADDED || changeType == ChangeType.REPLACED) {
-					crossMergedPaths.add(resource);
-				}
-
-				// Prevent merging the whole module (if, e.g. merge info is merged for the module),
-				// since this would produce conflicts with the explicitly merged moves and copies.
-				if (!_modules.contains(resource) && !containsAncestorOrSelf(deletedPaths, resource)) {
-					builder.buildMerge(pathEntry, branch, module, resource, false);
-
-					if (changeType == ChangeType.DELETED) {
-						deletedPaths.add(resource);
-					}
-				}
 			}
 		}
 
@@ -331,6 +319,28 @@ public class MergeHandler extends Handler {
 			}
 		}
 		return hasMoves;
+	}
+
+	private void directMerge(SVNLogEntryPath pathEntry) throws SVNException {
+		String path = pathEntry.getPath();
+		String branch = getBranch(path);
+		String resource = getModulePath(path, branch.length());
+		String module = getModuleName(path, branch.length());
+		ChangeType changeType = ChangeType.fromSvn(pathEntry.getType());
+
+		if (changeType == ChangeType.ADDED || changeType == ChangeType.REPLACED) {
+			_crossMergedPaths.add(resource);
+		}
+
+		// Prevent merging the whole module (if, e.g. merge info is merged for the module),
+		// since this would produce conflicts with the explicitly merged moves and copies.
+		if (!_modules.contains(resource) && !containsAncestorOrSelf(_deletedPaths, resource)) {
+			_explicitPathChangeSetBuilder.buildMerge(pathEntry, branch, module, resource, false);
+
+			if (changeType == ChangeType.DELETED) {
+				_deletedPaths.add(resource);
+			}
+		}
 	}
 
 	/**
