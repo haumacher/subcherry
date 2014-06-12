@@ -276,35 +276,30 @@ public class MergeHandler extends Handler {
 						merge.setIgnoreAncestry(revert);
 						addOperation(merge);
 					} else {
-						SvnCopySource copySource;
-						if (containsAncestorOrSelf(deletedPaths, srcResource)) {
-							// At the time the copy will be performed, some other operation has
-							// already deleted the source of the copy (e.g. when the merged revision
-							// swaps two files). Perform a remote intra-branch copy (from the
-							// current HEAD revision) instead.
-							SVNRevision current = SVNRevision.HEAD;
-							SVNURL remoteSrcResourceInTargetBranch =
-								SVNURL.parseURIDecoded(_config.getSvnURL() + _config.getTargetBranch() + '/'
-									+ srcResource);
-							copySource =
-								SvnCopySource.create(
-									SvnTarget.fromURL(remoteSrcResourceInTargetBranch, current), current);
-							if (isMove) {
-								// Cannot move from remote to local.
-								isMove = false;
-							}
+						boolean alreadyDeleted = containsAncestorOrSelf(deletedPaths, srcResource);
+						if (isMove) {
+							deletedPaths.add(srcResource);
+						}
+
+						SvnCopySource copySource =
+							SvnCopySource.create(SvnTarget.fromFile(copyFile, SVNRevision.BASE), SVNRevision.BASE);
+
+						boolean moveInWorkingCopy;
+						if (alreadyDeleted) {
+							// At the time, the copy will be executed, the source of the move has
+							// already been deleted due to other actions. Therefore, a plain copy
+							// must be executed, because a move of a file in revision BASE will
+							// fail.
+							moveInWorkingCopy = false;
 						} else {
-							copySource = SvnCopySource.create(SvnTarget.fromFile(copyFile), SVNRevision.WORKING);
-							if (isMove) {
-								deletedPaths.add(srcResource);
-							}
+							moveInWorkingCopy = isMove;
 						}
 
 						SvnCopy copy = operations().createCopy();
 						copy.setDepth(SVNDepth.INFINITY);
 						copy.setMakeParents(true);
 						copy.setFailWhenDstExists(false);
-						copy.setMove(isMove);
+						copy.setMove(moveInWorkingCopy);
 						copy.addCopySource(copySource);
 						copy.setSingleTarget(target);
 						_operations.add(copy);
