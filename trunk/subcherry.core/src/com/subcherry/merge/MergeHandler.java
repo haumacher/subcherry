@@ -171,25 +171,31 @@ public class MergeHandler extends Handler {
 			}
 
 			{
-				ResourceChange mergedChange = getMergeSources(new ResourceChange(logEntry, pathEntry), targetBranch);
-				if (mergedChange == null) {
+				List<ResourceChange> sources = getMergeSources(new ResourceChange(logEntry, pathEntry), targetBranch);
+				if (sources == null) {
 					directMerge(pathEntry);
 					continue;
 				}
 
-				long mergedRevision = mergedChange.getChangeSet().getRevision();
+				ResourceChange srcChange = sources.get(sources.size() - 1);
+				long srcRevision = srcChange.getChangeSet().getRevision();
+				SVNLogEntryPath srcResourceChange = srcChange.getChange();
 
-				SVNLogEntryPath mergedResourceChange = mergedChange.getChange();
-				String origTargetPath = mergedResourceChange.getPath();
-
-				String srcPath = mergedResourceChange.getCopyPath();
+				String srcPath = srcResourceChange.getCopyPath();
 				String srcBranch = getBranch(srcPath);
 				String srcModule = getModuleName(srcPath, srcBranch.length());
 				String srcResource = getModulePath(srcPath, srcBranch.length());
 
+				if (!_modules.contains(srcModule)) {
+					// Copied from a module that is not part of the current merge. Perform a regular
+					// merge to get the content.
+					directMerge(pathEntry);
+					continue;
+				}
+
 				boolean isMove = isDeleted(logEntry, targetBranch + srcResource);
 				
-				if (_modules.contains(targetModule) && _modules.contains(srcModule)) {
+				{
 					File copyFile = new File(_config.getWorkspaceRoot(), srcResource);
 					File targetFile = new File(_config.getWorkspaceRoot(), targetResource);
 
@@ -199,10 +205,10 @@ public class MergeHandler extends Handler {
 						continue;
 					}
 
-					long copiedRevision = mergedResourceChange.getCopyRevision();
-					if (copiedRevision < mergedRevision - 1) {
+					long copiedRevision = srcResourceChange.getCopyRevision();
+					if (copiedRevision < srcRevision - 1) {
 						// The copy potentially is a revert.
-						int changeCount = getChangeCount(srcPath, copiedRevision, mergedRevision);
+						int changeCount = getChangeCount(srcPath, copiedRevision, srcRevision);
 						if (changeCount > 0) {
 							// There was a commit on the copied resource between the merged revision
 							// and the revision from which was copied from. De-facto, this commit
@@ -230,8 +236,8 @@ public class MergeHandler extends Handler {
 						// with the copy must be merged to the destination.
 						SvnMerge merge = operations().createMerge();
 						boolean revert = _config.getRevert();
-						SVNRevision startRevision = SVNRevision.create(revert ? mergedRevision : mergedRevision - 1);
-						SVNRevision endRevision = SVNRevision.create(revert ? mergedRevision - 1 : mergedRevision);
+						SVNRevision startRevision = SVNRevision.create(revert ? srcRevision : srcRevision - 1);
+						SVNRevision endRevision = SVNRevision.create(revert ? srcRevision - 1 : srcRevision);
 
 						merge.setMergeOptions(mergeOptions());
 						/* Must allow as otherwise the whole workspace is checked for revisions
@@ -275,20 +281,12 @@ public class MergeHandler extends Handler {
 						_operations.add(copy);
 					}
 
-					SVNRevision revisionBefore = SVNRevision.create(mergedRevision - 1);
-					SVNRevision changeRevision = SVNRevision.create(mergedRevision);
-
-					SVNURL origTargetUrl =
-						SVNURL.parseURIDecoded(_config.getSvnURL() + origTargetPath);
-					SvnTarget mergeSource = SvnTarget.fromURL(origTargetUrl, changeRevision);
-
-					SvnMerge merge = operations().createMerge();
-					merge.setAllowMixedRevisions(true);
-					merge.setIgnoreAncestry(true);
-					merge.addRevisionRange(SvnRevisionRange.create(revisionBefore, changeRevision));
-					merge.setSource(mergeSource, false);
-					merge.setSingleTarget(target);
-					_operations.add(merge);
+					// Apply potential content changes throughout the copy chain (starting with the
+					// first original intra-branch copy).
+					for (int n = sources.size() - 1; n >= 0; n--) {
+						ResourceChange mergedChange = sources.get(n);
+						mergeContentChanges(target, mergedChange);
+					}
 				}
 			}
 		}
@@ -300,6 +298,27 @@ public class MergeHandler extends Handler {
 			}
 		}
 		return hasMoves;
+	}
+
+	private void mergeContentChanges(SvnTarget target, ResourceChange mergedChange) throws SVNException {
+		long mergedRevision = mergedChange.getChangeSet().getRevision();
+		SVNLogEntryPath mergedResourceChange = mergedChange.getChange();
+		String origTargetPath = mergedResourceChange.getPath();
+
+		SVNRevision revisionBefore = SVNRevision.create(mergedRevision - 1);
+		SVNRevision changeRevision = SVNRevision.create(mergedRevision);
+
+		SVNURL origTargetUrl =
+			SVNURL.parseURIDecoded(_config.getSvnURL() + origTargetPath);
+		SvnTarget mergeSource = SvnTarget.fromURL(origTargetUrl, changeRevision);
+
+		SvnMerge merge = operations().createMerge();
+		merge.setAllowMixedRevisions(true);
+		merge.setIgnoreAncestry(true);
+		merge.addRevisionRange(SvnRevisionRange.create(revisionBefore, changeRevision));
+		merge.setSource(mergeSource, false);
+		merge.setSingleTarget(target);
+		_operations.add(merge);
 	}
 
 	/**
@@ -367,10 +386,15 @@ public class MergeHandler extends Handler {
 	 *        The original change to merge (read form the log of the merge).
 	 * @param targetBranch
 	 *        The branch to apply the change to.
-	 * @return The changes to apply to the target branch.
+	 * @return The changes (copies with potential content modifications) to apply to the target
+	 *         branch. The original (intra-branch) copy is the last change in the list.
+	 *         <code>null</code> if the copy chain does not end in an intra-branch copy.
 	 */
-	private ResourceChange getMergeSources(ResourceChange origChange, final String targetBranch)
+	private List<ResourceChange> getMergeSources(ResourceChange origChange, final String targetBranch)
 			throws SVNException {
+		ArrayList<ResourceChange> result = new ArrayList<>();
+		result.add(origChange);
+
 		ResourceChange mergedChange = origChange;
 		String copyPath = mergedChange.getChange().getCopyPath();
 		String copyBranch = getBranch(copyPath);
@@ -393,6 +417,8 @@ public class MergeHandler extends Handler {
 				String origCopyBranch = getBranch(origCopyPath);
 
 				mergedChange = new ResourceChange(origEntry, origPathEntry);
+				result.add(mergedChange);
+
 				copyPath = origCopyPath;
 
 				if (origCopyBranch.equals(copyBranch)) {
@@ -402,7 +428,8 @@ public class MergeHandler extends Handler {
 				copyBranch = origCopyBranch;
 			}
 		}
-		return mergedChange;
+
+		return result;
 	}
 
 	private boolean containsAncestorOrSelf(Set<String> paths, String path) {
