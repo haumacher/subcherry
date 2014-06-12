@@ -140,7 +140,8 @@ public class MergeHandler extends Handler {
 		MergeBuilder builder = new ExplicitPathChangeSetBuilder();
 		int operationCntBefore = _operations.size();
 
-		for (SVNLogEntryPath pathEntry : pathOrder(_logEntry.getChangedPaths().values())) {
+		SVNLogEntry logEntry = _logEntry;
+		for (SVNLogEntryPath pathEntry : pathOrder(logEntry.getChangedPaths().values())) {
 			final String targetPath = pathEntry.getPath();
 			final String targetBranch = getBranch(targetPath);
 			final String targetModule = getModuleName(targetPath, targetBranch.length());
@@ -156,51 +157,25 @@ public class MergeHandler extends Handler {
 				continue;
 			}
 
-			String srcPath = pathEntry.getCopyPath();
 
 			movedPath:
-			if (srcPath != null) {
-				SVNLogEntry mergedLogEntry = _logEntry;
-				String srcBranch = getBranch(srcPath);
-				String origTargetPath = targetPath;
-				SVNLogEntryPath mergedPathEntry = pathEntry;
-				if (!srcBranch.equals(targetBranch)) {
-					while (true) {
-						SVNLogEntry origEntry = loadRevision(mergedPathEntry.getCopyRevision());
-						SVNLogEntryPath origPathEntry = origEntry.getChangedPaths().get(srcPath);
-						if (origPathEntry == null) {
-							// Not copied directly from a copy/move changeset.
-								break movedPath;
-						}
-
-						String srcPath2 = origPathEntry.getCopyPath();
-						if (srcPath2 == null) {
-							// Cannot be followed to an intra-branch copy (was a plain add in the
-							// original change).
-								break movedPath;
-						}
-
-						String srcBranch2 = getBranch(srcPath2);
-
-						mergedLogEntry = origEntry;
-						mergedPathEntry = origPathEntry;
-						srcPath = srcPath2;
-
-						if (srcBranch2.equals(srcBranch)) {
-							origTargetPath = origPathEntry.getPath();
-							break;
-						}
-
-						srcBranch = srcBranch2;
-					}
+			if (pathEntry.getCopyPath() != null) {
+				ResourceChange mergedChange = getMergeSources(new ResourceChange(logEntry, pathEntry), targetBranch);
+				if (mergedChange == null) {
+					break movedPath;
 				}
 
-				long mergedRevision = mergedLogEntry.getRevision();
+				long mergedRevision = mergedChange.getChangeSet().getRevision();
+
+				SVNLogEntryPath mergedResourceChange = mergedChange.getChange();
+				String origTargetPath = mergedResourceChange.getPath();
+				String srcPath = mergedResourceChange.getCopyPath();
+				String srcBranch = getBranch(srcPath);
 
 				String srcModule = getModuleName(srcPath, srcBranch.length());
 				String srcResource = getModulePath(srcPath, srcBranch.length());
 
-				boolean isMove = isDeleted(_logEntry, targetBranch + srcResource);
+				boolean isMove = isDeleted(logEntry, targetBranch + srcResource);
 				
 				if (_modules.contains(targetModule) && _modules.contains(srcModule)) {
 					File copyFile = new File(_config.getWorkspaceRoot(), srcResource);
@@ -211,7 +186,7 @@ public class MergeHandler extends Handler {
 						break movedPath;
 					}
 
-					long copiedRevision = mergedPathEntry.getCopyRevision();
+					long copiedRevision = mergedResourceChange.getCopyRevision();
 					if (copiedRevision < mergedRevision - 1) {
 						// The copy potentially is a revert.
 						class Counter implements ISVNLogEntryHandler {
@@ -356,6 +331,51 @@ public class MergeHandler extends Handler {
 			}
 		}
 		return hasMoves;
+	}
+
+	/**
+	 * Compute the source change to merge for a given original change.
+	 * 
+	 * @param origChange
+	 *        The original change to merge (read form the log of the merge).
+	 * @param targetBranch
+	 *        The branch to apply the change to.
+	 * @return The changes to apply to the target branch.
+	 */
+	private ResourceChange getMergeSources(ResourceChange origChange, final String targetBranch)
+			throws SVNException {
+		ResourceChange mergedChange = origChange;
+		String copyPath = mergedChange.getChange().getCopyPath();
+		String copyBranch = getBranch(copyPath);
+		if (!copyBranch.equals(targetBranch)) {
+			while (true) {
+				SVNLogEntry origEntry = loadRevision(mergedChange.getChange().getCopyRevision());
+				SVNLogEntryPath origPathEntry = origEntry.getChangedPaths().get(copyPath);
+				if (origPathEntry == null) {
+					// Not copied directly from a copy/move changeset.
+					return null;
+				}
+
+				String origCopyPath = origPathEntry.getCopyPath();
+				if (origCopyPath == null) {
+					// Cannot be followed to an intra-branch copy (was a plain add in the
+					// original change).
+					return null;
+				}
+
+				String origCopyBranch = getBranch(origCopyPath);
+
+				mergedChange = new ResourceChange(origEntry, origPathEntry);
+				copyPath = origCopyPath;
+
+				if (origCopyBranch.equals(copyBranch)) {
+					break;
+				}
+
+				copyBranch = origCopyBranch;
+			}
+		}
+		return mergedChange;
 	}
 
 	private boolean containsAncestorOrSelf(Set<String> paths, String path) {
