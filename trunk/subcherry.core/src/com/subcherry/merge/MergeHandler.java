@@ -336,15 +336,18 @@ public class MergeHandler extends Handler {
 				String branch = getBranch(path);
 				String resource = getModulePath(path, branch.length());
 				String module = getModuleName(path, branch.length());
+				ChangeType changeType = ChangeType.fromSvn(pathEntry.getType());
 
-				crossMergedPaths.add(resource);
+				if (changeType == ChangeType.ADDED || changeType == ChangeType.REPLACED) {
+					crossMergedPaths.add(resource);
+				}
 
 				// Prevent merging the whole module (if, e.g. merge info is merged for the module),
 				// since this would produce conflicts with the explicitly merged moves and copies.
 				if (!_modules.contains(resource) && !containsAncestorOrSelf(deletedPaths, resource)) {
 					builder.buildMerge(pathEntry, branch, module, resource, false);
 
-					if (ChangeType.fromSvn(pathEntry.getType()) == ChangeType.DELETED) {
+					if (changeType == ChangeType.DELETED) {
 						deletedPaths.add(resource);
 					}
 				}
