@@ -128,4 +128,10 @@ public interface Configuration extends Value {
 	 */
 	boolean getSkipDependencies();
 
+	/**
+	 * Whether a merged change that has itself has been merged from somewhere else, is committed as
+	 * if it was directly merged from its original source.
+	 */
+	boolean getSilentRebase();
+
 }

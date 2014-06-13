@@ -51,6 +51,34 @@ public class Utils {
 			_leadRevision = extractLeadRevision(matcher);
 		}
 
+		public String getSourceBranch() {
+			return matcher.group(PORTED_FROM_GROUP);
+		}
+
+		public String getDestinationBranch() {
+			String toBranch = matcher.group(PORTED_TO_GROUP);
+			if (toBranch != null) {
+				return toBranch;
+			}
+			String onBranch = matcher.group(ON_BRANCH_GROUP);
+			if (onBranch != null) {
+				return onBranch;
+			}
+			String previewBranch = matcher.group(PREVIEW_BRANCH_GROUP);
+			if (previewBranch != null) {
+				return previewBranch;
+			}
+			String hotfixBranch = matcher.group(HOTFIX_BRANCH_GROUP);
+			if (hotfixBranch != null) {
+				return hotfixBranch;
+			}
+			return null;
+		}
+
+		public String getMergedRevision() {
+			return matcher.group(MERGED_REVISION_GROUP);
+		}
+		
 		public boolean isHotfix() {
 			return matcher.group(Utils.IS_HOTFIX_GROUP) != null;
 		}
@@ -92,6 +120,7 @@ public class Utils {
 	private static int API_CHANGE_GROUP;
 
 	private static int FOLLOW_UP_GROUP;
+	private static int MERGED_REVISION_GROUP;
 	private static int TICKET_NUMBER_GROUP;
 	private static int PREVIEW_BRANCH_GROUP;
 
@@ -163,8 +192,9 @@ public class Utils {
 	}
 
 	private static String mergeRevisionPrefix() {
-		return messagePart("\\[\\d+\\]");
+		return messagePart("\\[" + group(MERGED_REVISION_GROUP = group, "\\d+") + "\\]");
 	}
+
 	private static String messagePart(String part) {
 		return " " + part +  ":";
 	}

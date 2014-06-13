@@ -70,27 +70,27 @@ public class MessageRewriter {
 		newMesssage.append(": ");
 	}
 
-	protected void appendPortingTypeModifier(StringBuilder newMesssage, TicketMessage message) {
-		if (shouldRebase(message.ticketNumber)) {
-			if (message.isHotfix()) {
+	protected void appendPortingTypeModifier(StringBuilder newMesssage, TicketMessage oldMessage) {
+		if (shouldRebase(oldMessage.ticketNumber)) {
+			if (oldMessage.isHotfix()) {
 				addHotfix(newMesssage);
-			} else if (message.isPreview()) {
+			} else if (oldMessage.isPreview()) {
 				addPreview(newMesssage);
-			} else if (message.isBranchChange()) {
+			} else if (oldMessage.isBranchChange()) {
 				addBranchChange(newMesssage);
-			} else if (message.isPort()) {
-				addPort(newMesssage);
+			} else if (oldMessage.isPort()) {
+				addPort(oldMessage, newMesssage);
 			}
 		}
-		else if (shouldHotfix(message.ticketNumber)) {
+		else if (shouldHotfix(oldMessage.ticketNumber)) {
 			addHotfix(newMesssage);
 		}
-		else if (shouldPreview(message.ticketNumber)) {
+		else if (shouldPreview(oldMessage.ticketNumber)) {
 			addPreview(newMesssage);
 		} 
 		else {
-			if (!shouldRevert(message.ticketNumber) && !shouldReintegrate(message.ticketNumber)) {
-				addPort(newMesssage);
+			if (!shouldRevert(oldMessage.ticketNumber) && !shouldReintegrate(oldMessage.ticketNumber)) {
+				addPort(oldMessage, newMesssage);
 			}
 		}
 	}
@@ -115,7 +115,16 @@ public class MessageRewriter {
 			newMesssage.append("Reverted ");
 		}
 		newMesssage.append("[");
-		newMesssage.append(message.getOriginalRevision());
+		if (_config.getSilentRebase()) {
+			String mergedRevision = message.getMergedRevision();
+			if (mergedRevision != null) {
+				newMesssage.append(mergedRevision);
+			} else {
+				newMesssage.append(message.getOriginalRevision());
+			}
+		} else {
+			newMesssage.append(message.getOriginalRevision());
+		}
 		newMesssage.append("]:");
 	}
 
@@ -153,12 +162,24 @@ public class MessageRewriter {
 		newMesssage.append(": ");
 	}
 
-	private void addPort(StringBuilder newMesssage) {
+	private void addPort(TicketMessage oldMessage, StringBuilder newMesssage) {
 		newMesssage.append("Ported to ");
 		newMesssage.append(getBranchName(_config.getTargetBranch()));
 		newMesssage.append(" from ");
-		newMesssage.append(getBranchName(_config.getSourceBranch()));
+		newMesssage.append(getSourceBranch(oldMessage));
 		newMesssage.append(": ");
+	}
+
+	private String getSourceBranch(TicketMessage oldMessage) {
+		String sourceBranch = null;
+		if (_config.getSilentRebase()) {
+			sourceBranch = oldMessage.getSourceBranch();
+		}
+
+		if (sourceBranch == null) {
+			sourceBranch = getBranchName(_config.getSourceBranch());
+		}
+		return sourceBranch;
 	}
 
 	private void addPreview(StringBuilder newMesssage) {
