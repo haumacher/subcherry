@@ -228,30 +228,16 @@ public class MergeHandler extends Handler {
 					hasMoves = true;
 					SvnTarget target = SvnTarget.fromFile(targetFile);
 
-					if (srcResource.equals(targetResource)) {
-						// A resource was copied to itself. This is useful for reverting a path to
-						// an older version. Since such revert cannot easily be transformed to an
-						// operation in the current working copy (see above), at this location, the
-						// self-copy is a no-op. Only a potential modification that is done along
-						// with the copy must be merged to the destination.
-						SvnMerge merge = operations().createMerge();
-						boolean revert = _config.getRevert();
-						SVNRevision startRevision = SVNRevision.create(revert ? srcRevision : srcRevision - 1);
-						SVNRevision endRevision = SVNRevision.create(revert ? srcRevision - 1 : srcRevision);
+					if (ChangeType.fromSvn(pathEntry.getType()) == ChangeType.REPLACED) {
+						// Delete target before re-creating. Otherwise copy will fail.
 
-						merge.setMergeOptions(mergeOptions());
-						/* Must allow as otherwise the whole workspace is checked for revisions
-						 * which costs much time */
-						merge.setAllowMixedRevisions(true);
-						merge.setSingleTarget(target);
+						if (!containsAncestorOrSelf(_deletedPaths, targetResource)) {
+							addOperation(createRemove(targetResource));
+							_deletedPaths.add(targetResource);
+						}
+					}
 
-						SVNURL sourceUrl = SVNURL.parseURIDecoded(_config.getSvnURL() + srcPath);
-						merge.setSource(SvnTarget.fromURL(sourceUrl, endRevision), false);
-						merge.addRevisionRange(SvnRevisionRange.create(startRevision, endRevision));
-
-						merge.setIgnoreAncestry(revert);
-						addOperation(merge);
-					} else {
+					if (!srcResource.equals(targetResource)) {
 						boolean alreadyDeleted = containsAncestorOrSelf(_deletedPaths, srcResource);
 						if (isMove) {
 							_deletedPaths.add(srcResource);
@@ -274,7 +260,10 @@ public class MergeHandler extends Handler {
 						SvnCopy copy = operations().createCopy();
 						copy.setDepth(SVNDepth.INFINITY);
 						copy.setMakeParents(true);
-						copy.setFailWhenDstExists(false);
+						// Note: Must not ignore existance: If a directory is copied, and the
+						// destination path exists, the directory is copied into the existing
+						// directory, instead of its content.
+						copy.setFailWhenDstExists(true);
 						copy.setMove(moveInWorkingCopy);
 						copy.addCopySource(copySource);
 						copy.setSingleTarget(target);
