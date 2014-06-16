@@ -144,7 +144,6 @@ public class MergeHandler extends Handler {
 		}
 
 		boolean hasMoves = false;
-		int operationCntBefore = _operations.size();
 
 		SVNLogEntry logEntry = _logEntry;
 		for (SVNLogEntryPath svnPathEntry : pathOrder(logEntry.getChangedPaths().values())) {
@@ -255,14 +254,14 @@ public class MergeHandler extends Handler {
 						copy.setMove(moveInWorkingCopy);
 						copy.addCopySource(copySource);
 						copy.setSingleTarget(svnTarget);
-						_operations.add(copy);
+						addOperation(target.getResource(), copy);
 					}
 
 					// Apply potential content changes throughout the copy chain (starting with the
 					// first original intra-branch copy).
 					for (int n = sources.size() - 1; n >= 0; n--) {
 						ResourceChange mergedChange = sources.get(n);
-						mergeContentChanges(svnTarget, mergedChange);
+						mergeContentChanges(target.getResource(), svnTarget, mergedChange);
 					}
 				}
 			}
@@ -270,14 +269,16 @@ public class MergeHandler extends Handler {
 
 		if (!hasMoves) {
 			// Revert singleton merges.
-			for (int n = _operations.size(); n > operationCntBefore; n--) {
-				_operations.remove(n - 1);
-			}
+			_operations.clear();
+			_touchedResources.clear();
+			_deletedPaths.clear();
+			_crossMergedPaths.clear();
 		}
 		return hasMoves;
 	}
 
-	private void mergeContentChanges(SvnTarget target, ResourceChange mergedChange) throws SVNException {
+	private void mergeContentChanges(String targetResource, SvnTarget target, ResourceChange mergedChange)
+			throws SVNException {
 		long mergedRevision = mergedChange.getChangeSet().getRevision();
 		Path mergedResourceChange = mergedChange.getChange();
 		String origTargetPath = mergedResourceChange.getPath();
@@ -294,7 +295,7 @@ public class MergeHandler extends Handler {
 		merge.addRevisionRange(SvnRevisionRange.create(revisionBefore, changeRevision));
 		merge.setSource(mergeSource, false);
 		merge.setSingleTarget(target);
-		_operations.add(merge);
+		addOperation(targetResource, merge);
 	}
 
 	/**
@@ -538,13 +539,13 @@ public class MergeHandler extends Handler {
 		}
 	}
 
-	void addOperation(SvnOperation<?> operation) {
+	void addOperation(String targetResource, SvnOperation<?> operation) {
 		_operations.add(operation);
+		_touchedResources.add(targetResource);
 	}
 
 	private void addRemoteAdd(Path path, String targetResource) throws SVNException {
-		addOperation(createRemoteAdd(path, targetResource));
-		_touchedResources.add(targetResource);
+		addOperation(targetResource, createRemoteAdd(path, targetResource));
 	}
 
 	private SvnOperation<?> createRemoteAdd(Path path, String targetResource) throws SVNException {
@@ -579,10 +580,9 @@ public class MergeHandler extends Handler {
 		addModification(resourceName, urlPrefix, recordOnly, false);
 	}
 
-	void addModification(String resourceName, String urlPrefix, boolean recordOnly, boolean ignoreAncestry)
+	void addModification(String targetResource, String urlPrefix, boolean recordOnly, boolean ignoreAncestry)
 			throws SVNException {
-		addOperation(createModification(resourceName, urlPrefix, recordOnly, ignoreAncestry));
-		_touchedResources.add(resourceName);
+		addOperation(targetResource, createModification(targetResource, urlPrefix, recordOnly, ignoreAncestry));
 	}
 
 	SvnMerge createModification(String resourceName, String urlPrefix, boolean recordOnly, boolean ignoreAncestry)
@@ -612,9 +612,8 @@ public class MergeHandler extends Handler {
 		return merge;
 	}
 
-	private void addRemove(String resourceName) {
-		addOperation(createRemove(resourceName));
-		_touchedResources.add(resourceName);
+	private void addRemove(String targetResource) {
+		addOperation(targetResource, createRemove(targetResource));
 	}
 
 	private SvnOperation<?> createRemove(String resourceName) {
