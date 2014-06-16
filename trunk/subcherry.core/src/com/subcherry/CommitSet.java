@@ -38,6 +38,10 @@ public class CommitSet {
 		return _commits;
 	}
 
+	public Commit getLeadCommit() {
+		return _commits.get(0);
+	}
+
 	public Commit getCommit(long joinedRevision) {
 		for (Commit commit : _commits) {
 			if (commit.getLogEntry().getRevision() == joinedRevision) {

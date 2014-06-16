@@ -326,10 +326,78 @@ public class Main {
 			}
 
 			if (!commitSet.isEmpty()) {
-				commitSetByLeadRevision.put(commitSet.getCommits().get(0).getRevision(), commitSet);
+				commitSetByLeadRevision.put(commitSet.getLeadCommit().getRevision(), commitSet);
 			} else {
 				setIt.remove();
 			}
+		}
+
+		toOriginalOrder(commitSets);
+	}
+
+	/**
+	 * Reorder {@link CommitSet}s to their order in which their lead commits have occurred
+	 * originally.
+	 */
+	private static void toOriginalOrder(List<CommitSet> commitSets) {
+		class Order {
+			public final long _mergedRev;
+
+			public final int _origIndex;
+
+			public final CommitSet _value;
+
+			public Order(long mergedRev, int origIndex, CommitSet value) {
+				_mergedRev = mergedRev;
+				_origIndex = origIndex;
+				_value = value;
+			}
+		}
+
+		// Order by their original revisions.
+		final List<Order> indices = new ArrayList<>();
+		int index = 0;
+		long mergedRev = 0;
+		for (CommitSet commitSet : commitSets) {
+			String mergedRevision = commitSet.getLeadCommit().getTicketMessage().getMergedRevision();
+			if (mergedRevision != null) {
+				mergedRev = Long.parseLong(mergedRevision);
+			}
+			indices.add(new Order(mergedRev, index++, commitSet));
+		}
+
+		if (mergedRev == 0) {
+			// There are no merged changes.
+			return;
+		}
+
+		Collections.sort(indices, new Comparator<Order>() {
+			@Override
+			public int compare(Order cs1, Order cs2) {
+				long revision1 = cs1._mergedRev;
+				long revision2 = cs2._mergedRev;
+				if (revision1 < revision2) {
+					return -1;
+				}
+				if (revision1 > revision2) {
+					return 1;
+				}
+
+				int orig1 = cs1._origIndex;
+				int orig2 = cs2._origIndex;
+				if (orig1 < orig2) {
+					return -1;
+				}
+				if (orig1 > orig2) {
+					return 1;
+				}
+				return 0;
+			}
+		});
+
+		commitSets.clear();
+		for (Order order : indices) {
+			commitSets.add(order._value);
 		}
 	}
 
