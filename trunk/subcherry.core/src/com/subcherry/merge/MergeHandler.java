@@ -183,32 +183,31 @@ public class MergeHandler extends Handler {
 				boolean isMove = isDeleted(logEntry, target.getBranch() + srcResource);
 				
 				{
-					File copyFile = new File(_config.getWorkspaceRoot(), srcResource);
+					File srcFile = new File(_config.getWorkspaceRoot(), srcResource);
 					File targetFile = new File(_config.getWorkspaceRoot(), target.getResource());
 
-					if (!copyFile.exists()) {
-						// Locally not present, keep cross branch copy.
-						directMerge(target);
-						continue;
-					}
+					boolean existsBefore = srcFile.exists();
 
 					long copiedRevision = srcResourceChange.getCopyRevision();
-					if (copiedRevision < srcRevision - 1) {
-						// The copy potentially is a revert.
-						int changeCount = getChangeCount(srcPath.getPath(), copiedRevision, srcRevision);
-						if (changeCount > 0) {
-							// There was a commit on the copied resource between the merged revision
-							// and the revision from which was copied from. De-facto, this commit
-							// reverts the copied resource to a version not currently alive. Such
-							// revert cannot be easily done within the current working copy, because
-							// it is unclear what is the corrensponding revision, to which the
-							// copied file should be reverted.
+					if (existsBefore) {
+						if (copiedRevision < srcRevision - 1) {
+							// The copy potentially is a revert.
+							int changeCount = getChangeCount(srcPath.getPath(), copiedRevision, srcRevision);
+							if (changeCount > 0) {
+								// There was a commit on the copied resource between the merged revision
+								// and the revision from which was copied from. De-facto, this commit
+								// reverts the copied resource to a version not currently alive. Such
+								// revert cannot be easily done within the current working copy, because
+								// it is unclear what is the corrensponding revision, to which the
+								// copied file should be reverted.
+								
+								// TODO: The revert should be transformed to a file-system copy of the
+								// contents of the previous version (the copy source) into the target
+								// resouce plus applying the changes in the merged revision.
 
-							// TODO: The revert should be transformed to a file-system copy of the
-							// contents of the previous version (the copy source) into the target
-							// resouce plus applying the changes in the merged revision.
-							directMerge(target);
-							continue;
+								// Create a cross-branch copy.
+								existsBefore = false;
+							}
 						}
 					}
 
@@ -224,14 +223,29 @@ public class MergeHandler extends Handler {
 						}
 					}
 
-					if (!srcResource.equals(target.getResource())) {
+					{
 						boolean alreadyDeleted = containsAncestorOrSelf(_deletedPaths, srcResource);
+						if (!existsBefore) {
+							// Not even present at the beginning of the merge.
+							alreadyDeleted = true;
+						}
+
 						if (isMove) {
 							_deletedPaths.add(srcResource);
 						}
 
-						SvnCopySource copySource =
-							SvnCopySource.create(SvnTarget.fromFile(copyFile, SVNRevision.BASE), SVNRevision.BASE);
+						SvnCopySource copySource;
+						if (!existsBefore) {
+							// Keep a remote cross branch copy.
+							SVNURL srcUrl = svnUrl(_config.getSvnURL() + srcResourceChange.getCopyPath());
+							SVNRevision copiedSvnRevision = SVNRevision.create(copiedRevision);
+							
+							copySource =
+								SvnCopySource.create(SvnTarget.fromURL(srcUrl, copiedSvnRevision), copiedSvnRevision);
+						} else {
+							copySource =
+								SvnCopySource.create(SvnTarget.fromFile(srcFile, SVNRevision.BASE), SVNRevision.BASE);
+						}
 
 						boolean moveInWorkingCopy;
 						if (alreadyDeleted) {
