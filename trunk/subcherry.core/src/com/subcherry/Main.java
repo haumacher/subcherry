@@ -397,7 +397,7 @@ public class Main {
 	}
 
 	private static CommitHandler newCommitHandler(PathParser paths, MessageRewriter messageRewriter) {
-		return new CommitHandler(config(), paths, _modules, messageRewriter);
+		return new CommitHandler(config(), messageRewriter);
 	}
 
 	private static String[] getPaths(Configuration config) {

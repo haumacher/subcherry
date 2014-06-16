@@ -62,6 +62,8 @@ public class MergeHandler extends Handler {
 
 	private Set<String> _crossMergedPaths;
 
+	private Set<String> _touchedResources;
+
 	private final MergeBuilder _explicitPathChangeSetBuilder = new ExplicitPathChangeSetBuilder();
 
 	private final PathParser _paths;
@@ -90,12 +92,13 @@ public class MergeHandler extends Handler {
 		_operations = new ArrayList<>();
 		_deletedPaths = new HashSet<>();
 		_crossMergedPaths = new HashSet<>();
+		_touchedResources = new HashSet<>();
 
 		// It is not probable that multiple change sets require the same copy revision.
 		_additionalRevisions.clear();
 
 		buildOperations();
-		return new Merge(_logEntry.getRevision(), _operations);
+		return new Merge(_logEntry.getRevision(), _operations, _touchedResources);
 	}
 
 	private void buildOperations() throws SVNException {
@@ -228,7 +231,7 @@ public class MergeHandler extends Handler {
 						// Delete target before re-creating. Otherwise copy will fail.
 
 						if (!containsAncestorOrSelf(_deletedPaths, target.getResource())) {
-							addOperation(createRemove(target.getResource()));
+							addRemove(target.getResource());
 							_deletedPaths.add(target.getResource());
 						}
 					}
@@ -520,27 +523,27 @@ public class MergeHandler extends Handler {
 		switch (path.getType()) {
 			case DELETED: {
 				if (!recordOnly) {
-					addOperation(createRemove(resourceName));
+					addRemove(resourceName);
 				}
 				break;
 			}
 			case ADDED: {
 				if (!recordOnly) {
-					addOperation(createRemoteAdd(path, resourceName));
+					addRemoteAdd(path, resourceName);
 				}
-				addOperation(createModification(resourceName, urlPrefix, recordOnly, ignoreAncestry));
+				addModification(resourceName, urlPrefix, recordOnly, ignoreAncestry);
 				break;
 			}
 			case REPLACED: {
 				if (!recordOnly) {
-					addOperation(createRemove(resourceName));
-					addOperation(createRemoteAdd(path, resourceName));
+					addRemove(resourceName);
+					addRemoteAdd(path, resourceName);
 				}
-				addOperation(createModification(resourceName, urlPrefix, recordOnly, ignoreAncestry));
+				addModification(resourceName, urlPrefix, recordOnly, ignoreAncestry);
 				break;
 			}
 			case MODIFIED: {
-				addOperation(createModification(resourceName, urlPrefix, recordOnly, ignoreAncestry));
+				addModification(resourceName, urlPrefix, recordOnly, ignoreAncestry);
 				break;
 			}
 		}
@@ -550,7 +553,12 @@ public class MergeHandler extends Handler {
 		_operations.add(operation);
 	}
 
-	private SvnOperation<?> createRemoteAdd(Path path, String resourceName) throws SVNException {
+	private void addRemoteAdd(Path path, String targetResource) throws SVNException {
+		addOperation(createRemoteAdd(path, targetResource));
+		_touchedResources.add(targetResource);
+	}
+
+	private SvnOperation<?> createRemoteAdd(Path path, String targetResource) throws SVNException {
 		SVNRevision revision;
 		SvnCopySource copySource;
 		if (path.getCopyPath() == null) {
@@ -572,14 +580,20 @@ public class MergeHandler extends Handler {
 		copy.setFailWhenDstExists(false);
 		copy.setMove(false);
 		copy.addCopySource(copySource);
-		copy.setSingleTarget(SvnTarget.fromFile(new File(_config.getWorkspaceRoot(), resourceName)));
+		copy.setSingleTarget(SvnTarget.fromFile(new File(_config.getWorkspaceRoot(), targetResource)));
 
 		return copy;
 	}
 
-	SvnMerge createModification(String resourceName, String urlPrefix, boolean recordOnly)
+	void addModification(String resourceName, String urlPrefix, boolean recordOnly)
 			throws SVNException {
-		return createModification(resourceName, urlPrefix, recordOnly, false);
+		addModification(resourceName, urlPrefix, recordOnly, false);
+	}
+
+	void addModification(String resourceName, String urlPrefix, boolean recordOnly, boolean ignoreAncestry)
+			throws SVNException {
+		addOperation(createModification(resourceName, urlPrefix, recordOnly, ignoreAncestry));
+		_touchedResources.add(resourceName);
 	}
 
 	SvnMerge createModification(String resourceName, String urlPrefix, boolean recordOnly, boolean ignoreAncestry)
@@ -607,6 +621,11 @@ public class MergeHandler extends Handler {
 		
 		merge.setIgnoreAncestry(revert || ignoreAncestry);
 		return merge;
+	}
+
+	private void addRemove(String resourceName) {
+		addOperation(createRemove(resourceName));
+		_touchedResources.add(resourceName);
 	}
 
 	private SvnOperation<?> createRemove(String resourceName) {
@@ -645,7 +664,7 @@ public class MergeHandler extends Handler {
 			}
 			_mergedModules.add(module);
 
-			addOperation(createModification(path.getModule(), createUrlPrefix(path.getBranch()), recordOnly));
+			addModification(path.getModule(), createUrlPrefix(path.getBranch()), recordOnly);
 		}
 	}
 

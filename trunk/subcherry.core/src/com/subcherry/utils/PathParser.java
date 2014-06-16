@@ -46,7 +46,7 @@ public class PathParser {
 		int moduleStartIndex = getModuleStartIndex(pathName);
 		String branch = getBranch(pathName, moduleStartIndex);
 		String resource = getResource(pathName, moduleStartIndex);
-		String moduleName = getModuleName(pathName, moduleStartIndex);
+		String moduleName = getModule(resource);
 
 		return new Path(pathName, branch, moduleName, resource, null);
 	}
@@ -73,12 +73,13 @@ public class PathParser {
 		return changedPath.substring(0, moduleStartIndex);
 	}
 
-	private static String getModuleName(String changedPath, int moduleStartIndex) {
-		int moduleEndIndex = changedPath.indexOf(Utils.SVN_SERVER_PATH_SEPARATOR, moduleStartIndex);
+	public static String getModule(String resource) {
+		int moduleEndIndex = resource.indexOf(Utils.SVN_SERVER_PATH_SEPARATOR);
 		if (moduleEndIndex < 0) {
-			moduleEndIndex = changedPath.length();
+			return resource;
+		} else {
+			return resource.substring(0, moduleEndIndex);
 		}
-		return changedPath.substring(moduleStartIndex, moduleEndIndex);
 	}
 
 }

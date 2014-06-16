@@ -148,6 +148,8 @@ public class MergeCommitHandler {
 		merge:
 		while (true) {
 			Map<File, List<SVNConflictDescription>> conflicts = merge.run(_mergeContext);
+			commit.addTouchedResources(merge.getTouchedResources());
+
 			if (!conflicts.isEmpty()) {
 				log(conflicts);
 				if (_config.getNoCommit() && _config.getAutoSkipConflicts()) {
@@ -246,7 +248,7 @@ public class MergeCommitHandler {
 				if (input.startsWith(excludeCommand)) {
 					String excludedPath = input.substring(excludeCommand.length());
 					
-					boolean removed = commit.excludePath(new File(excludedPath));
+					boolean removed = commit.excludeResource(excludedPath);
 					if (!removed) {
 						System.err.println("Not in pathes being committed '" + excludedPath + ":");
 						for (File path : commit.getAffectedPaths()) {
@@ -258,7 +260,7 @@ public class MergeCommitHandler {
 				if (input.startsWith(includeCommand)) {
 					String includePath = input.substring(includeCommand.length());
 					
-					boolean added = commit.includePath(new File(includePath));
+					boolean added = commit.includeResource(includePath);
 					if (!added) {
 						System.err.println("Path already contained: " + includePath);
 					}

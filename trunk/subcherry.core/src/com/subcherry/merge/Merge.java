@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.tmatesoft.svn.core.SVNException;
 import org.tmatesoft.svn.core.wc.SVNConflictDescription;
@@ -20,9 +21,12 @@ public class Merge {
 
 	private final long _revision;
 
-	public Merge(long revision, Collection<SvnOperation<?>> operations) {
+	private Set<String> _touchedResources;
+
+	public Merge(long revision, Collection<SvnOperation<?>> operations, Set<String> touchedResources) {
 		_revision = revision;
 		_operations = operations;
+		_touchedResources = touchedResources;
 	}
 
 	/**
@@ -37,6 +41,13 @@ public class Merge {
 	 */
 	public Collection<SvnOperation<?>> getOperations() {
 		return _operations;
+	}
+
+	/**
+	 * The resources (workspace-relative paths) that must be committed after applying this merge.
+	 */
+	public Set<String> getTouchedResources() {
+		return _touchedResources;
 	}
 
 	/**
