@@ -34,6 +34,7 @@ import org.tmatesoft.svn.core.wc2.SvnTarget;
 import com.subcherry.AdditionalRevision;
 import com.subcherry.Configuration;
 import com.subcherry.history.ChangeType;
+import com.subcherry.util.VirtualFS;
 import com.subcherry.utils.Log;
 import com.subcherry.utils.Path;
 import com.subcherry.utils.PathParser;
@@ -58,13 +59,13 @@ public class MergeHandler extends Handler {
 
 	private Map<SVNRevision, SVNLogEntry> _additionalRevisions = new HashMap<>();
 
-	private Set<String> _deletedPaths;
+	private final VirtualFS _virtualFs;
 
 	private Set<String> _crossMergedPaths;
 
 	private Set<String> _touchedResources;
 
-	private final MergeBuilder _explicitPathChangeSetBuilder = new ExplicitPathChangeSetBuilder();
+	private final ExplicitPathChangeSetBuilder _explicitPathChangeSetBuilder = new ExplicitPathChangeSetBuilder();
 
 	private final PathParser _paths;
 
@@ -73,6 +74,7 @@ public class MergeHandler extends Handler {
 		_clientManager = clientManager;
 		_paths = paths;
 		_modules = modules;
+		_virtualFs = new VirtualFS();
 	}
 
 	private SvnOperationFactory operations() {
@@ -90,7 +92,7 @@ public class MergeHandler extends Handler {
 	public Merge parseMerge(SVNLogEntry logEntry) throws SVNException {
 		_logEntry = logEntry;
 		_operations = new ArrayList<>();
-		_deletedPaths = new HashSet<>();
+		_virtualFs.clear();
 		_crossMergedPaths = new HashSet<>();
 		_touchedResources = new HashSet<>();
 
@@ -216,26 +218,29 @@ public class MergeHandler extends Handler {
 					hasMoves = true;
 					SvnTarget svnTarget = SvnTarget.fromFile(targetFile);
 
+					boolean removeBeforeMerge;
 					if (target.getType() == ChangeType.REPLACED) {
 						// Delete target before re-creating. Otherwise copy will fail.
-
-						if (!containsAncestorOrSelf(_deletedPaths, target.getResource())) {
-							addRemove(target.getResource());
-							_deletedPaths.add(target.getResource());
-						}
+						removeBeforeMerge = existsWhenMerged(target.getResource());
+					} else {
+						removeBeforeMerge = false;
 					}
 
 					{
 						boolean srcExistsWhenMerged;
 						if (srcExistsBefore) {
-							srcExistsWhenMerged = !containsAncestorOrSelf(_deletedPaths, srcResource);
+							srcExistsWhenMerged = existsWhenMerged(srcResource);
 						} else {
 							// Not even present at the beginning of the merge.
 							srcExistsWhenMerged = false;
 						}
 
 						if (isMove) {
-							_deletedPaths.add(srcResource);
+							_virtualFs.delete(srcResource);
+						}
+
+						if (removeBeforeMerge) {
+							addRemove(target.getResource());
 						}
 
 						SvnCopySource copySource;
@@ -273,6 +278,7 @@ public class MergeHandler extends Handler {
 						copy.addCopySource(copySource);
 						copy.setSingleTarget(svnTarget);
 						addOperation(target.getResource(), copy);
+						_virtualFs.add(target.getResource());
 					}
 
 					// Apply potential content changes throughout the copy chain (starting with the
@@ -289,10 +295,14 @@ public class MergeHandler extends Handler {
 			// Revert singleton merges.
 			_operations.clear();
 			_touchedResources.clear();
-			_deletedPaths.clear();
+			_virtualFs.clear();
 			_crossMergedPaths.clear();
 		}
 		return hasMoves;
+	}
+
+	private boolean existsWhenMerged(final String resource) {
+		return _virtualFs.exists(resource);
 	}
 
 	private void mergeContentChanges(String targetResource, SvnTarget target, ResourceChange mergedChange)
@@ -362,12 +372,8 @@ public class MergeHandler extends Handler {
 
 		// Prevent merging the whole module (if, e.g. merge info is merged for the module),
 		// since this would produce conflicts with the explicitly merged moves and copies.
-		if (!_modules.contains(resource) && !containsAncestorOrSelf(_deletedPaths, resource)) {
+		if (!_modules.contains(resource) && existsWhenMerged(resource)) {
 			_explicitPathChangeSetBuilder.buildMerge(target, false);
-
-			if (changeType == ChangeType.DELETED) {
-				_deletedPaths.add(resource);
-			}
 		}
 	}
 
@@ -422,21 +428,6 @@ public class MergeHandler extends Handler {
 		}
 
 		return result;
-	}
-
-	private boolean containsAncestorOrSelf(Set<String> paths, String path) {
-		while (true) {
-			if (paths.contains(path)) {
-				return true;
-			}
-
-			int dirSeparatorIndex = path.lastIndexOf('/');
-			if (dirSeparatorIndex < 0) {
-				return false;
-			}
-
-			path = path.substring(0, dirSeparatorIndex);
-		}
 	}
 
 	private List<SVNLogEntryPath> pathOrder(Collection<SVNLogEntryPath> values) {
@@ -568,6 +559,7 @@ public class MergeHandler extends Handler {
 
 	private void addRemoteAdd(Path path, String targetResource) throws SVNException {
 		addOperation(targetResource, createRemoteAdd(path, targetResource));
+		_virtualFs.add(targetResource);
 	}
 
 	private SvnOperation<?> createRemoteAdd(Path path, String targetResource) throws SVNException {
@@ -636,6 +628,7 @@ public class MergeHandler extends Handler {
 
 	private void addRemove(String targetResource) {
 		addOperation(targetResource, createRemove(targetResource));
+		_virtualFs.delete(targetResource);
 	}
 
 	private SvnOperation<?> createRemove(String resourceName) {
