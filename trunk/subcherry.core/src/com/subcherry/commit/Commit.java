@@ -28,18 +28,19 @@ public class Commit {
 
 	private final SVNLogEntry _logEntry;
 
-	public Set<File> touchedModules;
+	private Set<File> _touchedModules;
 
 	private String commitMessage;
-	public File[] affectedPaths;
+
+	private File[] _affectedPaths;
 
 	private final TicketMessage _ticketMessage;
 
 	public Commit(SVNLogEntry logEntry, Set<File> touchedModules, TicketMessage ticketMessage, File[] affectedPaths) {
 		_logEntry = logEntry;
-		this.touchedModules = touchedModules;
+		_touchedModules = touchedModules;
 		_ticketMessage = ticketMessage;
-		this.affectedPaths = affectedPaths;
+		_affectedPaths = affectedPaths;
 	}
 
 	public SVNLogEntry getLogEntry() {
@@ -51,9 +52,9 @@ public class Commit {
 	}
 
 	public void join(Commit joinedCommit) {
-		touchedModules.addAll(joinedCommit.touchedModules);
+		_touchedModules.addAll(joinedCommit._touchedModules);
 		setCommitMessage(getCommitMessage() + "\\n" + joinedCommit.getCommitMessage());
-		affectedPaths = join(affectedPaths, joinedCommit.affectedPaths);
+		setAffectedPaths(join(getAffectedPaths(), joinedCommit.getAffectedPaths()));
 	}
 
 	private File[] join(File[] paths1, File[] paths2) {
@@ -71,8 +72,8 @@ public class Commit {
 
 	SVNCommitInfo doCommit(SVNCommitClient commitClient) throws SVNException {
 		HashSet<File> commitPathes = new HashSet<File>();
-		Collections.addAll(commitPathes, affectedPaths);
-		commitPathes.addAll(touchedModules);
+		Collections.addAll(commitPathes, getAffectedPaths());
+		commitPathes.addAll(_touchedModules);
 		boolean keepLocks = false;
 		SVNProperties revisionProperties = NO_ADDITIONAL_PROPERTIES;
 		String[] changelists = null;
@@ -90,7 +91,7 @@ public class Commit {
 		SVNDepth depth = SVNDepth.INFINITY;
 		boolean depthIsSticky = false;
 		boolean allowUnversionedObstructions = false;
-		File[] paths = touchedModules.toArray(ArrayUtil.EMPTY_FILE_ARRAY);
+		File[] paths = _touchedModules.toArray(ArrayUtil.EMPTY_FILE_ARRAY);
 		updateClient.doUpdate(paths, revision, depth, allowUnversionedObstructions, depthIsSticky);
 	}
 
@@ -100,7 +101,7 @@ public class Commit {
 		toStringBuilder.append("Commit[");
 		toStringBuilder.append("Msg:").append(getCommitMessage());
 		toStringBuilder.append(',');
-		toStringBuilder.append("Pathes:").append(Arrays.toString(affectedPaths));
+		toStringBuilder.append("Pathes:").append(Arrays.toString(getAffectedPaths()));
 		toStringBuilder.append("]");
 		return toStringBuilder.toString();
 	}
@@ -126,6 +127,14 @@ public class Commit {
 
 	public void setCommitMessage(String commitMessage) {
 		this.commitMessage = commitMessage;
+	}
+
+	public File[] getAffectedPaths() {
+		return _affectedPaths;
+	}
+
+	public void setAffectedPaths(File[] affectedPaths) {
+		_affectedPaths = affectedPaths;
 	}
 
 }

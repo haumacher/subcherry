@@ -6,11 +6,14 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.tmatesoft.svn.core.SVNLogEntry;
+import org.tmatesoft.svn.core.SVNLogEntryPath;
 
 import com.subcherry.Configuration;
 import com.subcherry.merge.Handler;
 import com.subcherry.utils.ArrayUtil;
 import com.subcherry.utils.Log;
+import com.subcherry.utils.Path;
+import com.subcherry.utils.PathParser;
 import com.subcherry.utils.Utils;
 import com.subcherry.utils.Utils.TicketMessage;
 
@@ -27,31 +30,34 @@ public class CommitHandler extends Handler {
 
 	final MessageRewriter _messageRewriter;
 
-	public CommitHandler(Configuration config, Set<String> modules, MessageRewriter messageRewriter) {
+	private final PathParser _paths;
+
+	public CommitHandler(Configuration config, PathParser paths, Set<String> modules, MessageRewriter messageRewriter) {
 		super(config);
 		
+		_paths = paths;
 		_modules = modules;
 		_messageRewriter = messageRewriter;
 	}
 
 	public Commit parseCommit(SVNLogEntry logEntry) {
-		Set<String> changedPaths = logEntry.getChangedPaths().keySet();
-		Set<File> touchedModules = getTouchedModules(changedPaths);
-		File[] affectedPaths = getAffectedPaths(changedPaths);
+		Set<File> touchedModules = getTouchedModules(logEntry);
+		File[] affectedPaths = inWorkspace(logEntry);
 		TicketMessage ticketMessage = new TicketMessage(logEntry.getRevision(), logEntry.getMessage(), _messageRewriter);
 		return new Commit(logEntry, touchedModules, ticketMessage, affectedPaths);
 	}
 
-	private Set<File> getTouchedModules(Set<String> changedPaths) {
+	private Set<File> getTouchedModules(SVNLogEntry logEntry) {
 		File workspaceRoot = _config.getWorkspaceRoot();
 		HashSet<File> files = new HashSet<File>();
-		for (String path : changedPaths) {
-			int moduleNameIndex = getModuleStartIndex(path);
-			String moduleName = getModuleName(moduleNameIndex, path);
-			if (_modules.contains(moduleName)) {
-				files.add(new File(workspaceRoot, moduleName));
+		for (SVNLogEntryPath pathEntry : logEntry.getChangedPaths().values()) {
+			Path path = _paths.parsePath(pathEntry);
+			String module = path.getModule();
+			if (_modules.contains(module)) {
+				files.add(new File(workspaceRoot, module));
 			} else {
-				Log.warning("Skipping change in module '" + moduleName + "' (not in relevant modules '" + _modules + "'): " + path);
+				Log.warning("Skipping change in module '" + module + "' (not in relevant modules '" + _modules + "'): "
+					+ path);
 			}
 		}
 		return files;
@@ -69,14 +75,13 @@ public class CommitHandler extends Handler {
 		return moduleName;
 	}
 
-	private File[] getAffectedPaths(Set<String> changedPaths) {
+	public File[] inWorkspace(SVNLogEntry logEntry) {
 		File workspaceRoot = _config.getWorkspaceRoot();
 		ArrayList<File> files = new ArrayList<File>();
-		for (String path : changedPaths) {
-			int moduleNameIndex = getModuleStartIndex(path);
-			String moduleName = getModuleName(moduleNameIndex, path);
-			if (_modules.contains(moduleName)) {
-				files.add(new File(workspaceRoot, path.substring(moduleNameIndex)));
+		for (SVNLogEntryPath pathEntry : logEntry.getChangedPaths().values()) {
+			Path path = _paths.parsePath(pathEntry);
+			if (_modules.contains(path.getModule())) {
+				files.add(new File(workspaceRoot, path.getResource()));
 			}
 		}
 		return files.toArray(ArrayUtil.EMPTY_FILE_ARRAY);

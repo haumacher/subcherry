@@ -50,6 +50,7 @@ import com.subcherry.merge.MergeHandler;
 import com.subcherry.trac.TracConnection;
 import com.subcherry.trac.TracTicket;
 import com.subcherry.utils.Log;
+import com.subcherry.utils.PathParser;
 import com.subcherry.utils.Utils;
 
 import de.haumacher.common.config.PropertiesUtil;
@@ -112,14 +113,15 @@ public class Main {
 		
 		TracConnection trac = createTracConnection(tracCredentials);
 		PortingTickets portingTickets = new PortingTickets(config(), trac);
-		MergeHandler mergeHandler = new MergeHandler(clientManager, config(), _modules);
+		PathParser paths = new PathParser(config());
+		MergeHandler mergeHandler = new MergeHandler(clientManager, config(), paths, _modules);
 		MergeCommitHandler mergeCommitHandler =
 			new MergeCommitHandler(mergeHandler, clientManager, config());
 		RevisionRewriter revisionRewriter = mergeCommitHandler.getRevisionRewriter();
 		MessageRewriter messageRewriter =
 			MessageRewriter.createMessageRewriter(config(), portingTickets, revisionRewriter);
 		SVNLogEntryMatcher logEntryMatcher = newLogEntryMatcher(trac, portingTickets);
-		CommitHandler commitHandler = newCommitHandler(messageRewriter);
+		CommitHandler commitHandler = newCommitHandler(paths, messageRewriter);
 		SVNURL url = SVNURL.parseURIDecoded(config().getSvnURL());
 
 		LOG.log(Level.INFO, "Reading source history.");
@@ -394,8 +396,8 @@ public class Main {
 			tracCredentials.getPasswd());
 	}
 
-	private static CommitHandler newCommitHandler(MessageRewriter messageRewriter) {
-		return new CommitHandler(config(), _modules, messageRewriter);
+	private static CommitHandler newCommitHandler(PathParser paths, MessageRewriter messageRewriter) {
+		return new CommitHandler(config(), paths, _modules, messageRewriter);
 	}
 
 	private static String[] getPaths(Configuration config) {

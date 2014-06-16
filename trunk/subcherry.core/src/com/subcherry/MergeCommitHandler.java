@@ -108,18 +108,18 @@ public class MergeCommitHandler {
 			CommitSet commitSet = _commitSets.get(n);
 			
 			for (Commit commit : commitSet.getCommits()) {
-				SVNLogEntry entry = commit.getLogEntry();
-				if (joinedRevisions.contains(entry.getRevision())) {
+				long revision = commit.getRevision();
+				if (joinedRevisions.contains(revision)) {
 					continue;
 				}
 
 				try {
-					Restart.setRevision(entry.getRevision());
+					Restart.setRevision(revision);
 				} catch (IOException ex) {
 					Log.info("Unable to store restart revision");
 				}
 
-				merge(commit, entry);
+				merge(commit, commit.getLogEntry());
 			}
 		}
 	}
@@ -247,7 +247,7 @@ public class MergeCommitHandler {
 				if (input.startsWith(excludeCommand)) {
 					String excludedPath = input.substring(excludeCommand.length());
 					
-					List<File> changedPaths = new ArrayList<File>(Arrays.asList(commit.affectedPaths));
+					List<File> changedPaths = new ArrayList<File>(Arrays.asList(commit.getAffectedPaths()));
 					boolean removed = changedPaths.remove(new File(excludedPath));
 					if (!removed) {
 						System.err.println("Not in pathes being committed '" + excludedPath + ":");
@@ -255,21 +255,21 @@ public class MergeCommitHandler {
 							System.err.println("   " + path.getPath());
 						}
 					} else {
-						commit.affectedPaths = changedPaths.toArray(new File[changedPaths.size()]);
+						commit.setAffectedPaths(changedPaths.toArray(new File[changedPaths.size()]));
 					}
 					continue;
 				}
 				if (input.startsWith(includeCommand)) {
 					String includePath = input.substring(includeCommand.length());
 					
-					List<File> changedPaths = new ArrayList<File>(Arrays.asList(commit.affectedPaths));
+					List<File> changedPaths = new ArrayList<File>(Arrays.asList(commit.getAffectedPaths()));
 					if (changedPaths.contains(new File(includePath))) {
 						System.err.println("Path already contained: " + includePath);
 					} else {
 						boolean added = changedPaths.add(new File(includePath));
 						assert added: "Could not add path: " + includePath;
-						commit.affectedPaths = changedPaths.toArray(new File[changedPaths.size()]);
-						System.out.println("New affected Paths: " + Arrays.toString(commit.affectedPaths));
+						commit.setAffectedPaths(changedPaths.toArray(new File[changedPaths.size()]));
+						System.out.println("New affected Paths: " + Arrays.toString(commit.getAffectedPaths()));
 					}
 					continue;
 				}

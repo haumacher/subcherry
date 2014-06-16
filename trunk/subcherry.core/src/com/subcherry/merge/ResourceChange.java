@@ -18,7 +18,8 @@
 package com.subcherry.merge;
 
 import org.tmatesoft.svn.core.SVNLogEntry;
-import org.tmatesoft.svn.core.SVNLogEntryPath;
+
+import com.subcherry.utils.Path;
 
 /**
  * Description of the change of a single resource (file or directory) in a certain change set.
@@ -30,11 +31,11 @@ public class ResourceChange {
 
 	private final SVNLogEntry _changeSet;
 
-	private final SVNLogEntryPath _change;
+	private final Path _change;
 
-	public ResourceChange(SVNLogEntry logEntry, SVNLogEntryPath pathEntry) {
+	public ResourceChange(SVNLogEntry logEntry, Path change) {
 		_changeSet = logEntry;
-		_change = pathEntry;
+		_change = change;
 	}
 
 	/**
@@ -47,7 +48,7 @@ public class ResourceChange {
 	/**
 	 * The change within the {@link #getChangeSet()}.
 	 */
-	public SVNLogEntryPath getChange() {
+	public Path getChange() {
 		return _change;
 	}
 
