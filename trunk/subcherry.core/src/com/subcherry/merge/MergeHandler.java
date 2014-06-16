@@ -173,23 +173,25 @@ public class MergeHandler extends Handler {
 				String srcModule = srcPath.getModule();
 				String srcResource = srcPath.getResource();
 
-				if (!_modules.contains(srcModule)) {
-					// Copied from a module that is not part of the current merge. Perform a regular
-					// merge to get the content.
-					directMerge(target);
-					continue;
-				}
-
 				boolean isMove = isDeleted(logEntry, target.getBranch() + srcResource);
 				
 				{
-					File srcFile = new File(_config.getWorkspaceRoot(), srcResource);
+					File srcFile;
+					boolean srcExistsBefore;
+					if (_modules.contains(srcModule)) {
+						srcFile = new File(_config.getWorkspaceRoot(), srcResource);
+						srcExistsBefore = srcFile.exists();
+					} else {
+						// Copied from a module that is not part of the current merge. Perform a
+						// regular cross-branch copy of the content.
+						srcFile = null;
+						srcExistsBefore = false;
+					}
+
 					File targetFile = new File(_config.getWorkspaceRoot(), target.getResource());
 
-					boolean existsBefore = srcFile.exists();
-
 					long copiedRevision = srcResourceChange.getCopyRevision();
-					if (existsBefore) {
+					if (srcExistsBefore) {
 						if (copiedRevision < srcRevision - 1) {
 							// The copy potentially is a revert.
 							int changeCount = getChangeCount(srcPath.getPath(), copiedRevision, srcRevision);
@@ -206,7 +208,7 @@ public class MergeHandler extends Handler {
 								// resouce plus applying the changes in the merged revision.
 
 								// Create a cross-branch copy.
-								existsBefore = false;
+								srcExistsBefore = false;
 							}
 						}
 					}
@@ -224,10 +226,12 @@ public class MergeHandler extends Handler {
 					}
 
 					{
-						boolean alreadyDeleted = containsAncestorOrSelf(_deletedPaths, srcResource);
-						if (!existsBefore) {
+						boolean srcExistsWhenMerged;
+						if (srcExistsBefore) {
+							srcExistsWhenMerged = !containsAncestorOrSelf(_deletedPaths, srcResource);
+						} else {
 							// Not even present at the beginning of the merge.
-							alreadyDeleted = true;
+							srcExistsWhenMerged = false;
 						}
 
 						if (isMove) {
@@ -235,7 +239,7 @@ public class MergeHandler extends Handler {
 						}
 
 						SvnCopySource copySource;
-						if (!existsBefore) {
+						if (!srcExistsBefore) {
 							// Keep a remote cross branch copy.
 							SVNURL srcUrl = svnUrl(_config.getSvnURL() + srcResourceChange.getCopyPath());
 							SVNRevision copiedSvnRevision = SVNRevision.create(copiedRevision);
@@ -248,14 +252,14 @@ public class MergeHandler extends Handler {
 						}
 
 						boolean moveInWorkingCopy;
-						if (alreadyDeleted) {
+						if (srcExistsWhenMerged) {
+							moveInWorkingCopy = isMove;
+						} else {
 							// At the time, the copy will be executed, the source of the move has
 							// already been deleted due to other actions. Therefore, a plain copy
 							// must be executed, because a move of a file in revision BASE will
 							// fail.
 							moveInWorkingCopy = false;
-						} else {
-							moveInWorkingCopy = isMove;
 						}
 
 						SvnCopy copy = operations().createCopy();
