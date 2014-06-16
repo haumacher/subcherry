@@ -539,9 +539,13 @@ public class MergeHandler extends Handler {
 		}
 	}
 
-	void addOperation(String targetResource, SvnOperation<?> operation) {
+	private void addOperation(String targetResource, SvnOperation<?> operation) {
 		_operations.add(operation);
-		_touchedResources.add(targetResource);
+		addCommitResource(targetResource);
+	}
+
+	void addCommitResource(String resource) {
+		_touchedResources.add(resource);
 	}
 
 	private void addRemoteAdd(Path path, String targetResource) throws SVNException {
@@ -647,6 +651,9 @@ public class MergeHandler extends Handler {
 			if (!_modules.contains(module)) {
 				return;
 			}
+
+			addCommitResource(path.getResource());
+
 			if (_mergedModules.contains(module)) {
 				return;
 			}
