@@ -652,7 +652,9 @@ public class MergeHandler extends Handler {
 				return;
 			}
 
-			addCommitResource(path.getResource());
+			if (!recordOnly) {
+				addCommitResource(path.getResource());
+			}
 
 			if (_mergedModules.contains(module)) {
 				return;
