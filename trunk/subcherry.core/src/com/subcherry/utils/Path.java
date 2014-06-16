@@ -35,12 +35,11 @@ public class Path {
 
 	private Path _copyPath;
 
-	public Path(String pathName, String branch, String module, String resource, Path copyPath) {
+	public Path(String pathName, String branch, String module, String resource) {
 		_pathName = pathName;
 		_branch = branch;
 		_module = module;
 		_resource = resource;
-		_copyPath = copyPath;
 	}
 
 	public String getPath() {

@@ -33,6 +33,9 @@ public class PathParser {
 	}
 
 	public Path parsePath(SVNLogEntryPath pathEntry) {
+		if (pathEntry == null) {
+			return null;
+		}
 		Path result = parsePath(pathEntry.getPath());
 		result.setPathEntry(pathEntry);
 		String copyPath = pathEntry.getCopyPath();
@@ -48,7 +51,7 @@ public class PathParser {
 		String resource = getResource(pathName, moduleStartIndex);
 		String moduleName = getModule(resource);
 
-		return new Path(pathName, branch, moduleName, resource, null);
+		return new Path(pathName, branch, moduleName, resource);
 	}
 
 	private int getModuleStartIndex(String changedPath) {

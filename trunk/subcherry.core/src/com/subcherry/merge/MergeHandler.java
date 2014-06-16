@@ -374,20 +374,21 @@ public class MergeHandler extends Handler {
 		if (!copyBranch.equals(targetBranch)) {
 			while (true) {
 				SVNLogEntry origEntry = loadRevision(mergedChange.getChange().getCopyRevision());
-				Path origPathEntry = _paths.parsePath(origEntry.getChangedPaths().get(copyPath));
+				SVNLogEntryPath origPathEntry = origEntry.getChangedPaths().get(copyPath);
 				if (origPathEntry == null) {
 					// Not copied directly from a copy/move changeset.
 					break;
 				}
 
-				Path origCopyPath = origPathEntry.getCopyPath();
+				Path origPath = _paths.parsePath(origPathEntry);
+				Path origCopyPath = origPath.getCopyPath();
 				if (origCopyPath == null) {
 					// Cannot be followed to an intra-branch copy (was a plain add in the
 					// original change).
 					break;
 				}
 
-				mergedChange = new ResourceChange(origEntry, origPathEntry);
+				mergedChange = new ResourceChange(origEntry, origPath);
 				result.add(mergedChange);
 
 				String origCopyBranch = origCopyPath.getBranch();
