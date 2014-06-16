@@ -120,6 +120,7 @@ public class Utils {
 	private static int API_CHANGE_GROUP;
 
 	private static int FOLLOW_UP_GROUP;
+	private static int FOLLOW_UP_GROUP_2;
 	private static int MERGED_REVISION_GROUP;
 	private static int TICKET_NUMBER_GROUP;
 	private static int PREVIEW_BRANCH_GROUP;
@@ -162,6 +163,7 @@ public class Utils {
 			"(?:" + apiChangePrefix() + ")?" +
 			"(?:" + followUpRevisionPrefix() + ")?" +
 			"(?:" + mergeRevisionPrefix() + ")?" +
+			"(?:" + followUpRevisionPrefix2() + ")?" +
 			group(ORIG_MESSAGE_GROUP = group, originalMessage()) + "$";
 	}
 	private static String ticketPrefix() {
@@ -189,6 +191,10 @@ public class Utils {
 
 	private static String followUpRevisionPrefix() {
 		return messagePart("(?:Follow-up|Bugfix) (?:\\d+ )?for \\[" + group(FOLLOW_UP_GROUP = group, "\\d+") + "\\]");
+	}
+
+	private static String followUpRevisionPrefix2() {
+		return messagePart("(?:Follow-up|Bugfix) (?:\\d+ )?for \\[" + group(FOLLOW_UP_GROUP_2 = group, "\\d+") + "\\]");
 	}
 
 	private static String mergeRevisionPrefix() {
@@ -235,7 +241,10 @@ public class Utils {
 	public static long extractLeadRevision(Matcher matcher) {
 		String leadRevision = matcher.group(FOLLOW_UP_GROUP);
 		if (leadRevision == null) {
-			return 0;
+			leadRevision = matcher.group(FOLLOW_UP_GROUP_2);
+			if (leadRevision == null) {
+				return 0;
+			}
 		}
 		return Long.parseLong(leadRevision);
 	}
