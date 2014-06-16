@@ -17,8 +17,6 @@ import org.tmatesoft.svn.core.SVNDepth;
 import org.tmatesoft.svn.core.SVNException;
 import org.tmatesoft.svn.core.SVNLogEntry;
 import org.tmatesoft.svn.core.SVNLogEntryPath;
-import org.tmatesoft.svn.core.SVNMergeRange;
-import org.tmatesoft.svn.core.SVNMergeRangeList;
 import org.tmatesoft.svn.core.SVNURL;
 import org.tmatesoft.svn.core.wc.SVNClientManager;
 import org.tmatesoft.svn.core.wc.SVNDiffClient;
@@ -57,10 +55,6 @@ public class MergeHandler extends Handler {
 	private List<SvnOperation<?>> _operations;
 
 	private SVNClientManager _clientManager;
-
-	private SVNLogEntry _originalLogEntry;
-
-	private boolean _originalEntryResolved;
 
 	private Map<SVNRevision, SVNLogEntry> _additionalRevisions = new HashMap<>();
 
@@ -299,8 +293,7 @@ public class MergeHandler extends Handler {
 		SVNRevision revisionBefore = SVNRevision.create(mergedRevision - 1);
 		SVNRevision changeRevision = SVNRevision.create(mergedRevision);
 
-		SVNURL origTargetUrl =
-			SVNURL.parseURIDecoded(_config.getSvnURL() + origTargetPath);
+		SVNURL origTargetUrl = svnUrl(_config.getSvnURL() + origTargetPath);
 		SvnTarget mergeSource = SvnTarget.fromURL(origTargetUrl, changeRevision);
 
 		SvnMerge merge = operations().createMerge();
@@ -341,7 +334,7 @@ public class MergeHandler extends Handler {
 		SVNRevision beforeMergedSvnRevision = SVNRevision.create(mergedRevision - 1);
 		SVNRevision afterCopiedRevision = SVNRevision.create(copiedRevision + 1);
 		SVNRevision copiedSvnRevision = SVNRevision.create(copiedRevision);
-		_clientManager.getLogClient().doLog(SVNURL.parseURIDecoded(_config.getSvnURL()),
+		_clientManager.getLogClient().doLog(svnUrl(_config.getSvnURL()),
 			new String[] { path }, copiedSvnRevision, beforeMergedSvnRevision,
 			afterCopiedRevision, true, false, false, 0, NO_PROPERTIES,
 			counter);
@@ -446,27 +439,6 @@ public class MergeHandler extends Handler {
 		return result;
 	}
 
-	private SVNLogEntry getOriginalChange() throws SVNException {
-		if (_originalEntryResolved) {
-			return _originalLogEntry;
-		}
-		_originalEntryResolved = true;
-
-		Path targetPath = _paths.parsePath(_logEntry.getChangedPaths().values().iterator().next());
-		SVNURL targetModuleUrl = SVNURL.parseURIDecoded(_config.getSvnURL() + targetPath.getResource());
-
-		long revision = _logEntry.getRevision();
-		long originalRevision = getOriginalRevision(targetModuleUrl, revision);
-
-		if (originalRevision > 0) {
-			SVNLogEntry logEntry = loadRevision(originalRevision);
-
-			_originalLogEntry = logEntry;
-		}
-
-		return _originalLogEntry;
-	}
-
 	private SVNLogEntry loadRevision(long revision) throws SVNException {
 		SVNRevision svnRevision = SVNRevision.create(revision);
 
@@ -491,7 +463,7 @@ public class MergeHandler extends Handler {
 			boolean stopOnCopy = false;
 			boolean discoverChangedPaths = true;
 			boolean includeMergedRevisions = false;
-			_clientManager.getLogClient().doLog(SVNURL.parseURIDecoded(_config.getSvnURL()), ROOT,
+			_clientManager.getLogClient().doLog(svnUrl(_config.getSvnURL()), ROOT,
 				svnRevision, svnRevision, svnRevision,
 				stopOnCopy, discoverChangedPaths, includeMergedRevisions, 0, NO_PROPERTIES, handler);
 
@@ -499,56 +471,6 @@ public class MergeHandler extends Handler {
 			_additionalRevisions.put(svnRevision, result);
 		}
 		return result;
-	}
-
-	private long getOriginalRevision(SVNURL url, long revision) throws SVNException {
-		SVNRevision changeRevision = SVNRevision.create(revision);
-		SVNRevision revisionBefore = SVNRevision.create(revision - 1);
-
-		// Compute the diff in merge info that the current changeset produces on the
-		// target module.
-		Map<SVNURL, SVNMergeRangeList> mergeInfo = diffClient().doGetMergedMergeInfo(url, changeRevision);
-		Map<SVNURL, SVNMergeRangeList> mergeInfoBefore = diffClient().doGetMergedMergeInfo(url, revisionBefore);
-
-		long originalChange = Long.MAX_VALUE;
-		for (Entry<SVNURL, SVNMergeRangeList> entry : mergeInfo.entrySet()) {
-			SVNMergeRangeList rangeListBefore = mergeInfoBefore.get(entry.getKey());
-
-			SVNMergeRangeList diffList;
-			if (rangeListBefore != null && !rangeListBefore.isEmpty()) {
-				diffList = entry.getValue().diff(rangeListBefore, true);
-			} else {
-				diffList = entry.getValue();
-			}
-
-			if (diffList == null || diffList.isEmpty()) {
-				continue;
-			}
-
-			SVNMergeRange[] ranges = diffList.getRanges();
-			if (ranges.length == 1) {
-				SVNMergeRange singleRange = ranges[0];
-				long startRevision = singleRange.getStartRevision();
-				long endRevision = singleRange.getEndRevision();
-				if (endRevision == startRevision + 1) {
-					if (endRevision < originalChange) {
-						originalChange = endRevision;
-					}
-					continue;
-				}
-			}
-
-			// The merge source is not unique, multiple revisions have been merged to
-			// one. The original revision cannot be determined.
-			return -1;
-		}
-
-		if (originalChange == Long.MAX_VALUE) {
-			// No merge info was found at all.
-			return -1;
-		}
-
-		return originalChange;
 	}
 
 	private void addRecordOnly(MergeBuilder builder) throws SVNException {
@@ -634,12 +556,12 @@ public class MergeHandler extends Handler {
 		if (path.getCopyPath() == null) {
 			revision = SVNRevision.create(_logEntry.getRevision());
 			copySource = SvnCopySource.create(
-				SvnTarget.fromURL(SVNURL.parseURIDecoded(_config.getSvnURL() + path.getPath()), revision),
+				SvnTarget.fromURL(svnUrl(_config.getSvnURL() + path.getPath()), revision),
 				revision);
 		} else {
 			revision = SVNRevision.create(path.getCopyRevision());
 			copySource = SvnCopySource.create(
-				SvnTarget.fromURL(SVNURL.parseURIDecoded(_config.getSvnURL() + path.getCopyPath()), revision),
+				SvnTarget.fromURL(svnUrl(_config.getSvnURL() + path.getCopyPath()), revision),
 				revision);
 		}
 
@@ -677,7 +599,7 @@ public class MergeHandler extends Handler {
 		SvnTarget target = SvnTarget.fromFile(targetFile);
 		merge.setSingleTarget(target);
 		
-		SVNURL sourceUrl = SVNURL.parseURIDecoded(urlPrefix + resourceName);
+		SVNURL sourceUrl = svnUrl(urlPrefix + resourceName);
 		SvnTarget source = SvnTarget.fromURL(sourceUrl, endRevision);
 		merge.setSource(source, false);
 		SvnRevisionRange range = SvnRevisionRange.create(startRevision, endRevision);
@@ -754,6 +676,10 @@ public class MergeHandler extends Handler {
 			addMergeOperations(path, path.getResource(), urlPrefix, recordOnly);
 		}
 
+	}
+
+	private static SVNURL svnUrl(String svnURL) throws SVNException {
+		return SVNURL.parseURIDecoded(svnURL);
 	}
 
 }
