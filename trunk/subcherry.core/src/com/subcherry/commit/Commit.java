@@ -2,7 +2,6 @@ package com.subcherry.commit;
 
 import java.io.File;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -32,11 +31,11 @@ public class Commit {
 
 	private String commitMessage;
 
-	private File[] _affectedPaths;
+	private Set<File> _affectedPaths;
 
 	private final TicketMessage _ticketMessage;
 
-	public Commit(SVNLogEntry logEntry, Set<File> touchedModules, TicketMessage ticketMessage, File[] affectedPaths) {
+	public Commit(SVNLogEntry logEntry, Set<File> touchedModules, TicketMessage ticketMessage, Set<File> affectedPaths) {
 		_logEntry = logEntry;
 		_touchedModules = touchedModules;
 		_ticketMessage = ticketMessage;
@@ -54,7 +53,7 @@ public class Commit {
 	public void join(Commit joinedCommit) {
 		_touchedModules.addAll(joinedCommit._touchedModules);
 		setCommitMessage(getCommitMessage() + "\\n" + joinedCommit.getCommitMessage());
-		setAffectedPaths(join(getAffectedPaths(), joinedCommit.getAffectedPaths()));
+		_affectedPaths.addAll(joinedCommit.getAffectedPaths());
 	}
 
 	private File[] join(File[] paths1, File[] paths2) {
@@ -72,7 +71,7 @@ public class Commit {
 
 	SVNCommitInfo doCommit(SVNCommitClient commitClient) throws SVNException {
 		HashSet<File> commitPathes = new HashSet<File>();
-		Collections.addAll(commitPathes, getAffectedPaths());
+		commitPathes.addAll(getAffectedPaths());
 		commitPathes.addAll(_touchedModules);
 		boolean keepLocks = false;
 		SVNProperties revisionProperties = NO_ADDITIONAL_PROPERTIES;
@@ -101,7 +100,7 @@ public class Commit {
 		toStringBuilder.append("Commit[");
 		toStringBuilder.append("Msg:").append(getCommitMessage());
 		toStringBuilder.append(',');
-		toStringBuilder.append("Pathes:").append(Arrays.toString(getAffectedPaths()));
+		toStringBuilder.append("Pathes:").append(getAffectedPaths());
 		toStringBuilder.append("]");
 		return toStringBuilder.toString();
 	}
@@ -129,12 +128,16 @@ public class Commit {
 		this.commitMessage = commitMessage;
 	}
 
-	public File[] getAffectedPaths() {
+	public Set<File> getAffectedPaths() {
 		return _affectedPaths;
 	}
 
-	public void setAffectedPaths(File[] affectedPaths) {
-		_affectedPaths = affectedPaths;
+	public boolean excludePath(File path) {
+		return _affectedPaths.remove(path);
+	}
+
+	public boolean includePath(File path) {
+		return _affectedPaths.add(path);
 	}
 
 }

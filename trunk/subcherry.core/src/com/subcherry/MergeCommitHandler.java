@@ -2,7 +2,6 @@ package com.subcherry;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -247,29 +246,21 @@ public class MergeCommitHandler {
 				if (input.startsWith(excludeCommand)) {
 					String excludedPath = input.substring(excludeCommand.length());
 					
-					List<File> changedPaths = new ArrayList<File>(Arrays.asList(commit.getAffectedPaths()));
-					boolean removed = changedPaths.remove(new File(excludedPath));
+					boolean removed = commit.excludePath(new File(excludedPath));
 					if (!removed) {
 						System.err.println("Not in pathes being committed '" + excludedPath + ":");
-						for (File path : changedPaths) {
+						for (File path : commit.getAffectedPaths()) {
 							System.err.println("   " + path.getPath());
 						}
-					} else {
-						commit.setAffectedPaths(changedPaths.toArray(new File[changedPaths.size()]));
 					}
 					continue;
 				}
 				if (input.startsWith(includeCommand)) {
 					String includePath = input.substring(includeCommand.length());
 					
-					List<File> changedPaths = new ArrayList<File>(Arrays.asList(commit.getAffectedPaths()));
-					if (changedPaths.contains(new File(includePath))) {
+					boolean added = commit.includePath(new File(includePath));
+					if (!added) {
 						System.err.println("Path already contained: " + includePath);
-					} else {
-						boolean added = changedPaths.add(new File(includePath));
-						assert added: "Could not add path: " + includePath;
-						commit.setAffectedPaths(changedPaths.toArray(new File[changedPaths.size()]));
-						System.out.println("New affected Paths: " + Arrays.toString(commit.getAffectedPaths()));
 					}
 					continue;
 				}

@@ -1,7 +1,6 @@
 package com.subcherry.commit;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -10,11 +9,9 @@ import org.tmatesoft.svn.core.SVNLogEntryPath;
 
 import com.subcherry.Configuration;
 import com.subcherry.merge.Handler;
-import com.subcherry.utils.ArrayUtil;
 import com.subcherry.utils.Log;
 import com.subcherry.utils.Path;
 import com.subcherry.utils.PathParser;
-import com.subcherry.utils.Utils;
 import com.subcherry.utils.Utils.TicketMessage;
 
 /**
@@ -42,7 +39,7 @@ public class CommitHandler extends Handler {
 
 	public Commit parseCommit(SVNLogEntry logEntry) {
 		Set<File> touchedModules = getTouchedModules(logEntry);
-		File[] affectedPaths = inWorkspace(logEntry);
+		Set<File> affectedPaths = inWorkspace(logEntry);
 		TicketMessage ticketMessage = new TicketMessage(logEntry.getRevision(), logEntry.getMessage(), _messageRewriter);
 		return new Commit(logEntry, touchedModules, ticketMessage, affectedPaths);
 	}
@@ -63,28 +60,16 @@ public class CommitHandler extends Handler {
 		return files;
 	}
 
-	private String getModuleName(int moduleNameIndex, String path) {
-		if (moduleNameIndex < 0) {
-			return null;
-		}
-		int endIndex = path.indexOf(Utils.SVN_SERVER_PATH_SEPARATOR, moduleNameIndex);
-		if (endIndex < 0) {
-			endIndex = path.length();
-		}
-		String moduleName = path.substring(moduleNameIndex, endIndex);
-		return moduleName;
-	}
-
-	public File[] inWorkspace(SVNLogEntry logEntry) {
+	public Set<File> inWorkspace(SVNLogEntry logEntry) {
 		File workspaceRoot = _config.getWorkspaceRoot();
-		ArrayList<File> files = new ArrayList<File>();
+		Set<File> files = new HashSet<>();
 		for (SVNLogEntryPath pathEntry : logEntry.getChangedPaths().values()) {
 			Path path = _paths.parsePath(pathEntry);
 			if (_modules.contains(path.getModule())) {
 				files.add(new File(workspaceRoot, path.getResource()));
 			}
 		}
-		return files.toArray(ArrayUtil.EMPTY_FILE_ARRAY);
+		return files;
 	}
 
 }
