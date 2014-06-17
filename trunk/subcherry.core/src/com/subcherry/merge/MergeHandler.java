@@ -373,7 +373,7 @@ public class MergeHandler extends Handler {
 		// Prevent merging the whole module (if, e.g. merge info is merged for the module),
 		// since this would produce conflicts with the explicitly merged moves and copies.
 		if (!_modules.contains(resource) && existsWhenMerged(resource)) {
-			_explicitPathChangeSetBuilder.buildMerge(target, false);
+			_explicitPathChangeSetBuilder.buildMerge(target, false, true);
 		}
 	}
 
@@ -504,17 +504,12 @@ public class MergeHandler extends Handler {
 				continue;
 			}
 
-			builder.buildMerge(changedPath, recordOnly);
+			builder.buildMerge(changedPath, recordOnly, false);
 		}
 	}
 
 	String createUrlPrefix(String branch) {
 		return _config.getSvnURL() + branch;
-	}
-
-	void addMergeOperations(Path path, String resourceName, String urlPrefix, boolean recordOnly)
-			throws SVNException {
-		addMergeOperations(path, resourceName, urlPrefix, recordOnly, false);
 	}
 
 	void addMergeOperations(Path path, String resourceName, String urlPrefix, boolean recordOnly,
@@ -589,11 +584,6 @@ public class MergeHandler extends Handler {
 		return copy;
 	}
 
-	void addModification(String resourceName, String urlPrefix, boolean recordOnly)
-			throws SVNException {
-		addModification(resourceName, urlPrefix, recordOnly, false);
-	}
-
 	void addModification(String targetResource, String urlPrefix, boolean recordOnly, boolean ignoreAncestry)
 			throws SVNException {
 		addOperation(targetResource, createModification(targetResource, urlPrefix, recordOnly, ignoreAncestry));
@@ -644,7 +634,7 @@ public class MergeHandler extends Handler {
 
 	abstract class MergeBuilder {
 
-		public abstract void buildMerge(Path path, boolean recordOnly) throws SVNException;
+		public abstract void buildMerge(Path path, boolean recordOnly, boolean ignoreAncestry) throws SVNException;
 
 	}
 
@@ -657,7 +647,7 @@ public class MergeHandler extends Handler {
 		}
 
 		@Override
-		public void buildMerge(Path path, boolean recordOnly) throws SVNException {
+		public void buildMerge(Path path, boolean recordOnly, boolean ignoreAncestry) throws SVNException {
 			String module = path.getModule();
 			if (!_modules.contains(module)) {
 				return;
@@ -672,7 +662,7 @@ public class MergeHandler extends Handler {
 			}
 			_mergedModules.add(module);
 
-			addModification(path.getModule(), createUrlPrefix(path.getBranch()), recordOnly);
+			addModification(path.getModule(), createUrlPrefix(path.getBranch()), recordOnly, ignoreAncestry);
 		}
 	}
 
@@ -685,7 +675,7 @@ public class MergeHandler extends Handler {
 		}
 
 		@Override
-		public void buildMerge(Path path, boolean recordOnly) throws SVNException {
+		public void buildMerge(Path path, boolean recordOnly, boolean ignoreAncestry) throws SVNException {
 			if (!_includePaths.contains(path.getResource())) {
 				// Skip path.
 				return;
@@ -698,11 +688,10 @@ public class MergeHandler extends Handler {
 
 	class ExplicitPathChangeSetBuilder extends MergeBuilder {
 		@Override
-		public void buildMerge(Path path, boolean recordOnly) throws SVNException {
+		public void buildMerge(Path path, boolean recordOnly, boolean ignoreAncestry) throws SVNException {
 			String urlPrefix = createUrlPrefix(path.getBranch());
-			addMergeOperations(path, path.getResource(), urlPrefix, recordOnly);
+			addMergeOperations(path, path.getResource(), urlPrefix, recordOnly, ignoreAncestry);
 		}
-
 	}
 
 	private static SVNURL svnUrl(String svnURL) throws SVNException {
