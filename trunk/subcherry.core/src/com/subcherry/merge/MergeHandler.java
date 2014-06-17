@@ -17,6 +17,7 @@ import org.tmatesoft.svn.core.SVNDepth;
 import org.tmatesoft.svn.core.SVNException;
 import org.tmatesoft.svn.core.SVNLogEntry;
 import org.tmatesoft.svn.core.SVNLogEntryPath;
+import org.tmatesoft.svn.core.SVNNodeKind;
 import org.tmatesoft.svn.core.SVNURL;
 import org.tmatesoft.svn.core.wc.SVNClientManager;
 import org.tmatesoft.svn.core.wc.SVNDiffClient;
@@ -61,7 +62,7 @@ public class MergeHandler extends Handler {
 
 	private final VirtualFS _virtualFs;
 
-	private Set<String> _crossMergedPaths;
+	private Set<String> _crossMergedDirectories;
 
 	private Set<String> _touchedResources;
 
@@ -93,7 +94,7 @@ public class MergeHandler extends Handler {
 		_logEntry = logEntry;
 		_operations = new ArrayList<>();
 		_virtualFs.clear();
-		_crossMergedPaths = new HashSet<>();
+		_crossMergedDirectories = new HashSet<>();
 		_touchedResources = new HashSet<>();
 
 		// It is not probable that multiple change sets require the same copy revision.
@@ -154,6 +155,13 @@ public class MergeHandler extends Handler {
 			if (!_modules.contains(target.getModule())) {
 				// The change happened in a module that is not among the merged modules, drop the
 				// change.
+				continue;
+			}
+
+			if (anchestorCrossMerged(target.getResource())) {
+				// Some ancestor of the current path has been cross-branch copied directly from the
+				// merged change set. All descendants of this ancestor are implicitly copied as well
+				// and must not be merged again.
 				continue;
 			}
 
@@ -296,9 +304,29 @@ public class MergeHandler extends Handler {
 			_operations.clear();
 			_touchedResources.clear();
 			_virtualFs.clear();
-			_crossMergedPaths.clear();
+			_crossMergedDirectories.clear();
 		}
 		return hasMoves;
+	}
+
+	private boolean anchestorCrossMerged(String resource) {
+		if (_crossMergedDirectories.isEmpty()) {
+			// Optimization.
+			return false;
+		}
+
+		while (true) {
+			if (_crossMergedDirectories.contains(resource)) {
+				return true;
+			}
+
+			int dirSeparatorIndex = resource.lastIndexOf('/');
+			if (dirSeparatorIndex < 0) {
+				return false;
+			}
+
+			resource = resource.substring(0, dirSeparatorIndex);
+		}
 	}
 
 	private boolean existsWhenMerged(final String resource) {
@@ -367,7 +395,9 @@ public class MergeHandler extends Handler {
 		ChangeType changeType = target.getType();
 
 		if (changeType == ChangeType.ADDED || changeType == ChangeType.REPLACED) {
-			_crossMergedPaths.add(resource);
+			if (target.getPathEntry().getKind() == SVNNodeKind.DIR) {
+				_crossMergedDirectories.add(resource);
+			}
 		}
 
 		// Prevent merging the whole module (if, e.g. merge info is merged for the module),
