@@ -56,7 +56,7 @@ public final class MergeConflictCollector implements ISvnOperationHandler {
 		return _lazyConflicts;
 	}
 
-	private void addConflict(File file, List<SVNConflictDescription> conflicts) {
+	public void addConflict(File file, List<SVNConflictDescription> conflicts) {
 		if (_lazyConflicts == null) {
 			_lazyConflicts = new HashMap<>();
 		}
