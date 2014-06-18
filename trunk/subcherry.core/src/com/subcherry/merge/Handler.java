@@ -1,15 +1,14 @@
 package com.subcherry.merge;
 
-import com.subcherry.Configuration;
 
 /**
  * @version   $Revision$  $Author$  $Date$
  */
-public class Handler {
+public class Handler<C> {
 
-	protected final Configuration _config;
+	protected final C _config;
 
-	public Handler(Configuration config) {
+	public Handler(C config) {
 		_config = config;
 	}
 

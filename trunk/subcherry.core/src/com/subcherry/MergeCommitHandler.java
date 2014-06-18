@@ -94,7 +94,7 @@ public class MergeCommitHandler {
 		} else {
 			_commitContext = new CommitContext(clientManager.getUpdateClient(), clientManager.getCommitClient());
 		}
-		this._mergeContext = new MergeContext(_diffClient, config);
+		this._mergeContext = new MergeContext(_diffClient);
 		_autoCommit = config.getAutoCommit();
 		_stopOnRevisions = new HashSet<Long>(Arrays.asList(config.getStopOnRevisions()));
 	}

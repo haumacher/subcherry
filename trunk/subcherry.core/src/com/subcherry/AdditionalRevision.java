@@ -18,7 +18,6 @@
 package com.subcherry;
 
 import java.io.File;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -37,8 +36,8 @@ public class AdditionalRevision {
 				"(?:" + "\\(" + "\\s*" + "([^\\)]+)" + "\\s*" + "\\)" + ")?" + "(\\s*,)?\\s*");
 
 		@Override
-		public Map<Long, AdditionalRevision> defaultValue() {
-			return Collections.emptyMap();
+		public Map<Long, AdditionalRevision> init() {
+			return new HashMap<>();
 		}
 
 		@Override

@@ -2,6 +2,7 @@ package com.subcherry.commit;
 
 import org.tmatesoft.svn.core.SVNLogEntry;
 
+import com.subcherry.CommitConfig;
 import com.subcherry.Configuration;
 import com.subcherry.merge.Handler;
 import com.subcherry.utils.Utils.TicketMessage;
@@ -9,7 +10,7 @@ import com.subcherry.utils.Utils.TicketMessage;
 /**
  * @version $Revision$ $Author$ $Date$
  */
-public class CommitHandler extends Handler {
+public class CommitHandler extends Handler<CommitConfig> {
 	
 	static final String TRUNK = "trunk";
 	static final String ORIGINAL = "{original}";

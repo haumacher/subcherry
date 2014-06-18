@@ -1,7 +1,6 @@
 package com.subcherry;
 
 import java.io.File;
-import java.util.Map;
 import java.util.regex.Pattern;
 
 import de.haumacher.common.config.ObjectParser;
@@ -11,70 +10,103 @@ import de.haumacher.common.config.annotate.ValueParser;
 /**
  * @version $Revision$ $Author$ $Date$
  */
-public interface Configuration extends Value {
+public interface Configuration extends MergeConfig, CommitConfig, BranchConfig {
 	
 	long getStartRevision();
+
+	void setStartRevision(long value);
 	
 	long getEndRevision();
+
+	void setEndRevision(long value);
 
 	/**
 	 * Revision at which the source branch is found for listing relevant changes.
 	 */
 	long getPegRevision();
 
+	void setPegRevision(long value);
+
 	String[] getModules();
+
+	void setModules(String[] value);
 
 	@ValueParser(BranchParser.class)
 	String getSourceBranch();
 
+	void setSourceBranch(String value);
+
 	@ValueParser(BranchParser.class)
 	String getTargetBranch();
 
-	File getWorkspaceRoot();
-	
+	void setTargetBranch(String value);
+
 	boolean getNoCommit();
-	
-	boolean getRevert();
+
+	void setNoCommit(boolean value);
 	
 	boolean getRebase();
+
+	void setRebase(boolean value);
 
 	/**
 	 * Reorder commits to join "Follow-up" commits to their leading commit.
 	 */
 	boolean getReorderCommits();
 
+	void setReorderCommits(boolean value);
+
 	String getTracURL();
-	
-	String getSvnURL();
+
+	void setTracURL(String value);
 	
 	File getPatchDir();
 
+	void setPatchDir(File value);
+
 	Long[] getIgnoreRevisions();
+
+	void setIgnoreRevisions(Long[] value);
 
 	String[] getIgnoreTickets();
 
+	void setIgnoreTickets(String[] value);
+
 	String getTargetMilestone();
+
+	void setTargetMilestone(String value);
 
 	String[] getMilestones();
 
-	@ValueParser(AdditionalRevision.Parser.class)
-	Map<Long, AdditionalRevision> getAdditionalRevisions();
+	void setMilestones(String[] value);
 
 	Long[] getStopOnRevisions();
 
+	void setStopOnRevisions(Long[] value);
+
 	String[] getAdditionalTickets();
+
+	void setAdditionalTickets(String[] value);
 	
 	String getTicketQuery();
 
-	String getBranchPattern();
+	void setTicketQuery(String value);
 
 	boolean getAutoCommit();
 
+	void setAutoCommit(boolean value);
+
 	boolean getPreview();
+
+	void setPreview(boolean value);
 	
 	String getPortMessage();
 
+	void setPortMessage(String value);
+
 	boolean getDetectCommonModules();
+
+	void setDetectCommonModules(boolean value);
 
 	public class BranchParser extends ObjectParser<String> {
 
@@ -103,8 +135,12 @@ public interface Configuration extends Value {
 		@ValueParser(PatternParser.class)
 		Pattern getExcludeTicketMilestone();
 
+		void setExcludeTicketMilestone(Pattern value);
+
 		@ValueParser(PatternParser.class)
 		Pattern getExcludePath();
+
+		void setExcludePath(Pattern value);
 
 	}
 
@@ -117,21 +153,21 @@ public interface Configuration extends Value {
 	 */
 	boolean getAutoSkipConflicts();
 
-	/**
-	 * Whether intra-branch moves (and copies) should be merged semantically (as intra-branch move
-	 * in the target branch an applying the changes that happened together with the move).
-	 */
-	boolean getSemanticMoves();
+	void setAutoSkipConflicts(boolean value);
 
 	/**
 	 * Whether ticket dependency analysis should be skipped.
 	 */
 	boolean getSkipDependencies();
 
+	void setSkipDependencies(boolean value);
+
 	/**
 	 * Whether a merged change that has itself has been merged from somewhere else, is committed as
 	 * if it was directly merged from its original source.
 	 */
 	boolean getSilentRebase();
+
+	void setSilentRebase(boolean value);
 
 }

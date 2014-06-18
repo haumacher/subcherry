@@ -33,7 +33,7 @@ import org.tmatesoft.svn.core.wc2.SvnScheduleForRemoval;
 import org.tmatesoft.svn.core.wc2.SvnTarget;
 
 import com.subcherry.AdditionalRevision;
-import com.subcherry.Configuration;
+import com.subcherry.MergeConfig;
 import com.subcherry.history.ChangeType;
 import com.subcherry.util.VirtualFS;
 import com.subcherry.utils.Log;
@@ -44,7 +44,7 @@ import com.subcherry.utils.PathParser;
 /**
  * @version $Revision$ $Author$ $Date$
  */
-public class MergeHandler extends Handler {
+public class MergeHandler extends Handler<MergeConfig> {
 
 	private static final String[] ROOT = { "/" };
 
@@ -70,7 +70,7 @@ public class MergeHandler extends Handler {
 
 	private final PathParser _paths;
 
-	public MergeHandler(SVNClientManager clientManager, Configuration config, PathParser paths, Set<String> modules) {
+	public MergeHandler(SVNClientManager clientManager, MergeConfig config, PathParser paths, Set<String> modules) {
 		super(config);
 		_clientManager = clientManager;
 		_paths = paths;
@@ -476,19 +476,6 @@ public class MergeHandler extends Handler {
 
 		SVNLogEntry result = _additionalRevisions.get(svnRevision);
 		if (result == null) {
-			class LastLogEntry implements ISVNLogEntryHandler {
-				SVNLogEntry _entry;
-
-				@Override
-				public void handleLogEntry(SVNLogEntry logEntry) throws SVNException {
-					_entry = logEntry;
-				}
-
-				public SVNLogEntry getLogEntry() {
-					return _entry;
-				}
-			}
-
 			LastLogEntry handler = new LastLogEntry();
 
 			// Retrieve the original log entry.

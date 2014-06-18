@@ -22,13 +22,13 @@ import java.util.regex.Pattern;
 
 import org.tmatesoft.svn.core.SVNLogEntryPath;
 
-import com.subcherry.Configuration;
+import com.subcherry.BranchConfig;
 
 public class PathParser {
 
 	private final Pattern _branchPattern;
 
-	public PathParser(Configuration config) {
+	public PathParser(BranchConfig config) {
 		_branchPattern = Pattern.compile("^(?:" + config.getBranchPattern() + ")");
 	}
 

@@ -16,7 +16,7 @@ import org.tmatesoft.svn.core.wc.SVNCommitClient;
 import org.tmatesoft.svn.core.wc.SVNRevision;
 import org.tmatesoft.svn.core.wc.SVNUpdateClient;
 
-import com.subcherry.Configuration;
+import com.subcherry.CommitConfig;
 import com.subcherry.MergeCommitHandler;
 import com.subcherry.utils.ArrayUtil;
 import com.subcherry.utils.PathParser;
@@ -29,7 +29,7 @@ public class Commit {
 
 	private static final SVNProperties NO_ADDITIONAL_PROPERTIES = null;
 
-	private final Configuration _config;
+	private final CommitConfig _config;
 
 	private final SVNLogEntry _logEntry;
 
@@ -39,7 +39,7 @@ public class Commit {
 
 	private final Set<String> _touchedResources;
 
-	public Commit(Configuration config, SVNLogEntry logEntry, TicketMessage ticketMessage) {
+	public Commit(CommitConfig config, SVNLogEntry logEntry, TicketMessage ticketMessage) {
 		_config = config;
 		_logEntry = logEntry;
 		_ticketMessage = ticketMessage;
