@@ -71,7 +71,11 @@ public class OperationToString {
 
 	public static String toStringCopy(SvnCopy copy) {
 		StringBuilder buffer = new StringBuilder();
-		buffer.append("svn copy");
+		if (copy.isMove()) {
+			buffer.append("svn move");
+		} else {
+			buffer.append("svn copy");
+		}
 		appendDepth(buffer, copy.getDepth());
 		appendCopySources(buffer, copy.getSources());
 		appendTargets(buffer, copy.getTargets());
