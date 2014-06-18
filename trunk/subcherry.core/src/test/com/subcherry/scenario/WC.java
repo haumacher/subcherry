@@ -19,14 +19,19 @@ package test.com.subcherry.scenario;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.tmatesoft.svn.core.SVNCommitInfo;
 import org.tmatesoft.svn.core.SVNDepth;
 import org.tmatesoft.svn.core.SVNException;
 import org.tmatesoft.svn.core.SVNURL;
+import org.tmatesoft.svn.core.wc.ISVNStatusHandler;
 import org.tmatesoft.svn.core.wc.SVNClientManager;
 import org.tmatesoft.svn.core.wc.SVNCopySource;
 import org.tmatesoft.svn.core.wc.SVNRevision;
+import org.tmatesoft.svn.core.wc.SVNStatus;
+import org.tmatesoft.svn.core.wc.SVNWCClient;
 
 public class WC extends FileSystem {
 
@@ -42,7 +47,7 @@ public class WC extends FileSystem {
 		_scenario = scenario;
 		_path = path;
 
-		_wcPath = File.createTempFile("wc-" + scenario.getRepositoryRoot().getName(), "");
+		_wcPath = File.createTempFile("workspace", "");
 		_wcPath.delete();
 		_wcPath.mkdir();
 
@@ -89,7 +94,7 @@ public class WC extends FileSystem {
 	}
 
 	private void add(File file) throws SVNException {
-		clientManager().getWCClient().doAdd(file, false, false, true, SVNDepth.EMPTY, false, true);
+		wcClient().doAdd(file, false, false, true, SVNDepth.EMPTY, false, true);
 	}
 
 	private SVNClientManager clientManager() {
@@ -98,6 +103,32 @@ public class WC extends FileSystem {
 
 	private Scenario scenario() {
 		return _scenario;
+	}
+
+	public void delete(String path) throws SVNException {
+		wcClient().doDelete(toFile(path), false, true, false);
+	}
+
+	private SVNWCClient wcClient() {
+		return clientManager().getWCClient();
+	}
+
+	public void update(String path) throws IOException {
+		scenario().fillFileContent(toFile(path));
+	}
+
+	public List<File> getModified() throws SVNException {
+		final List<File> modified = new ArrayList<>();
+		ISVNStatusHandler handler = new ISVNStatusHandler() {
+			@Override
+			public void handleStatus(SVNStatus status) throws SVNException {
+				File file = status.getFile();
+				modified.add(file);
+			}
+		};
+		clientManager().getStatusClient().
+			doStatus(getDirectory(), SVNRevision.HEAD, SVNDepth.INFINITY, false, false, false, false, handler, null);
+		return modified;
 	}
 
 }

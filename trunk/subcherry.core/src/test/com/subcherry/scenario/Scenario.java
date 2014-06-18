@@ -39,7 +39,6 @@ import com.subcherry.merge.LastLogEntry;
 
 public class Scenario extends FileSystem {
 
-	private File _repositoryRoot;
 	private SVNClientManager _clientManager;
 	private SVNURL _repositoryUrl;
 
@@ -47,24 +46,23 @@ public class Scenario extends FileSystem {
 
 	private int _fileId = 1;
 
+	private static int _scenarioId = 1;
+
 	public static Scenario scenario() throws IOException, SVNException {
-		return new Scenario();
+		File repositoryRoot = File.createTempFile("repos", "");
+		repositoryRoot.delete();
+		repositoryRoot.mkdir();
+
+		SVNClientManager clientManager = SVNClientManager.newInstance();
+		SVNURL repositoryUrl =
+			clientManager.getAdminClient().doCreateRepository(repositoryRoot, "uuid-" + (_scenarioId++), true, false);
+
+		return new Scenario(clientManager, repositoryUrl);
 	}
 
-	private Scenario() throws IOException, SVNException {
-		_repositoryRoot = File.createTempFile("repos", "");
-		_repositoryRoot.delete();
-		_repositoryRoot.mkdir();
-
-		_clientManager = SVNClientManager.newInstance();
-		_clientManager.getAdminClient().doCreateRepository(_repositoryRoot, "uuid", true, false);
-
-		_repositoryUrl = SVNURL.fromFile(_repositoryRoot);
-
-		SVNURL trunk = _repositoryUrl.appendPath("/trunk", true);
-		SVNURL branches = _repositoryUrl.appendPath("/branches", true);
-		SVNURL tags = _repositoryUrl.appendPath("/tags", true);
-
+	private Scenario(SVNClientManager clientManager, SVNURL repositoryUrl) {
+		_clientManager = clientManager;
+		_repositoryUrl = repositoryUrl;
 	}
 
 	public SVNURL getRepositoryUrl() {
@@ -73,10 +71,6 @@ public class Scenario extends FileSystem {
 
 	public SVNClientManager clientManager() {
 		return _clientManager;
-	}
-
-	public File getRepositoryRoot() {
-		return _repositoryRoot;
 	}
 
 	public WC wc(String path) throws IOException, SVNException {
@@ -133,7 +127,7 @@ public class Scenario extends FileSystem {
 		return clientManager().getCopyClient();
 	}
 
-	String createMessage() {
+	public String createMessage() {
 		return "Commit " + createCommitId() + ".";
 	}
 
