@@ -245,6 +245,7 @@ public class MergeHandler extends Handler<MergeConfig> {
 
 						if (isMove) {
 							_virtualFs.delete(srcResource);
+							addCommitResource(srcResource);
 						}
 
 						if (removeBeforeMerge) {
