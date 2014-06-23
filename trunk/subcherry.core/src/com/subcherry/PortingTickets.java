@@ -100,6 +100,9 @@ public class PortingTickets {
 	}
 
 	public boolean shouldPort(Ticket ticket) {
+		if (_config.getAllChanges()) {
+			return true;
+		}
 		return _additionalTickets.containsKey(ticket.id());
 	}
 

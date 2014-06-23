@@ -170,4 +170,10 @@ public interface Configuration extends MergeConfig, CommitConfig, BranchConfig {
 
 	void setSilentRebase(boolean value);
 
+	/**
+	 * Whether all changes from the {@link #getSourceBranch()} should be merged ignoring ticket
+	 * information.
+	 */
+	boolean getAllChanges();
+
 }
