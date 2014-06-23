@@ -195,6 +195,38 @@ public class TestMerge extends TestCase {
 		assertCopyFrom(mergedEntry, "/branches/branch2/module1/folder/foo", "/branches/branch2/module1/foo");
 	}
 
+	public void testRegularlyRebasedContentChangeInMovedFolder() throws IOException, SVNException {
+		Scenario s = moduleScenario();
+
+		// Create scenario base.
+		WC wc1 = s.wc("/branches/branch1");
+		wc1.mkdir("module1/folder");
+		wc1.file("module1/folder/foo");
+		wc1.commit();
+
+		// Create target branch.
+		s.copy("/branches/branch-intermediate", "/branches/branch1");
+		s.copy("/branches/branch2", "/branches/branch1");
+
+		// Create revision to merge, move foo to module2 and bar to module1.
+		wc1.copy("module1/newfolder", "module1/folder");
+		wc1.delete("module1/folder");
+		wc1.update("module1/newfolder/foo");
+		long origRevision = wc1.commit();
+
+		long rebasedRevision = rebaseSvn(s, origRevision);
+
+		SVNLogEntry mergedEntry = doMerge(s, rebasedRevision);
+
+		// Changes have been applied.
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_ADDED, "/branches/branch2/module1/newfolder");
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_DELETED, "/branches/branch2/module1/folder");
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_MODIFIED, "/branches/branch2/module1/newfolder/foo");
+
+		// Intra-branch copy has been created.
+		assertCopyFrom(mergedEntry, "/branches/branch2/module1/folder", "/branches/branch2/module1/newfolder");
+	}
+
 	public void testFixRegularRebasedMove() throws IOException, SVNException {
 		Scenario s = moduleScenario();
 

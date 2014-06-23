@@ -313,9 +313,21 @@ public class MergeHandler extends Handler<MergeConfig> {
 
 	private void mergeContentChanges(String targetResource, SvnTarget target, ResourceChange mergedChange)
 			throws SVNException {
-		long mergedRevision = mergedChange.getChangeSet().getRevision();
+		SVNLogEntry mergedChangeSet = mergedChange.getChangeSet();
+		long mergedRevision = mergedChangeSet.getRevision();
 		Path mergedResourceChange = mergedChange.getChange();
 		String origTargetPath = mergedResourceChange.getPath();
+
+		if (mergedResourceChange.getPathEntry().getKind() == SVNNodeKind.DIR) {
+			String dirPrefix = origTargetPath + '/';
+			for (SVNLogEntryPath contentChange : mergedChangeSet.getChangedPaths().values()) {
+				String contentPathName = contentChange.getPath();
+				if (contentPathName.startsWith(dirPrefix)) {
+					Path contentPath = _paths.parsePath(contentPathName);
+					addCommitResource(contentPath.getResource());
+				}
+			}
+		}
 
 		SVNRevision revisionBefore = SVNRevision.create(mergedRevision - 1);
 		SVNRevision changeRevision = SVNRevision.create(mergedRevision);
