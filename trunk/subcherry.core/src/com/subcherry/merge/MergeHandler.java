@@ -183,8 +183,6 @@ public class MergeHandler extends Handler<MergeConfig> {
 				String srcModule = srcPath.getModule();
 				String srcResource = srcPath.getResource();
 
-				boolean isMove = isDeleted(logEntry, target.getBranch() + srcResource);
-				
 				{
 					File srcFile;
 					boolean srcExistsBefore;
@@ -235,19 +233,6 @@ public class MergeHandler extends Handler<MergeConfig> {
 					}
 
 					{
-						boolean srcExistsWhenMerged;
-						if (srcExistsBefore) {
-							srcExistsWhenMerged = existsWhenMerged(srcResource);
-						} else {
-							// Not even present at the beginning of the merge.
-							srcExistsWhenMerged = false;
-						}
-
-						if (isMove) {
-							_virtualFs.delete(srcResource);
-							addCommitResource(srcResource);
-						}
-
 						if (removeBeforeMerge) {
 							addRemove(target.getResource());
 						}
@@ -265,17 +250,6 @@ public class MergeHandler extends Handler<MergeConfig> {
 								SvnCopySource.create(SvnTarget.fromFile(srcFile, SVNRevision.BASE), SVNRevision.BASE);
 						}
 
-						boolean moveInWorkingCopy;
-						if (srcExistsWhenMerged) {
-							moveInWorkingCopy = isMove;
-						} else {
-							// At the time, the copy will be executed, the source of the move has
-							// already been deleted due to other actions. Therefore, a plain copy
-							// must be executed, because a move of a file in revision BASE will
-							// fail.
-							moveInWorkingCopy = false;
-						}
-
 						SvnCopy copy = operations().createCopy();
 						copy.setDepth(SVNDepth.INFINITY);
 						copy.setMakeParents(true);
@@ -283,7 +257,10 @@ public class MergeHandler extends Handler<MergeConfig> {
 						// destination path exists, the directory is copied into the existing
 						// directory, instead of its content.
 						copy.setFailWhenDstExists(true);
-						copy.setMove(moveInWorkingCopy);
+						// It is hard to determine, whether the source must be delete at the time
+						// the destination of the move is copied. Just handle the deletion at the
+						// time, the original deletion occurred (if it is de-facto a move).
+						copy.setMove(false);
 						copy.addCopySource(copySource);
 						copy.setSingleTarget(svnTarget);
 						addOperation(target.getResource(), copy);
@@ -499,16 +476,6 @@ public class MergeHandler extends Handler<MergeConfig> {
 
 	private void addMerges(MergeBuilder builder) throws SVNException {
 		createMerges(builder, false);
-	}
-
-	private static boolean isDeleted(SVNLogEntry logEntry, String path) {
-		SVNLogEntryPath pathEntry = logEntry.getChangedPaths().get(path);
-		if (pathEntry == null) {
-			return false;
-		}
-
-		char type = pathEntry.getType();
-		return type == SVNLogEntryPath.TYPE_DELETED || type == SVNLogEntryPath.TYPE_REPLACED;
 	}
 
 	private void createMerges(MergeBuilder builder, boolean recordOnly) throws SVNException {

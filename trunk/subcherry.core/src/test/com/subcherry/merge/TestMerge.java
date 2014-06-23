@@ -85,17 +85,13 @@ public class TestMerge extends TestCase {
 		assertTrue(changedPaths.get("/branches/branch2/module2") != null);
 
 		// Changes have been applied.
-		assertTrue(changedPaths.get("/branches/branch2/module1/foo") != null);
-		assertTrue(changedPaths.get("/branches/branch2/module1/bar") != null);
-		assertTrue(changedPaths.get("/branches/branch2/module2/baz") != null);
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_MODIFIED, "/branches/branch2/module1/foo");
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_DELETED, "/branches/branch2/module1/bar");
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_ADDED, "/branches/branch2/module2/baz");
 
 		assertNull(changedPaths.get("/branches/branch2/module1/foo").getCopyPath());
 		assertNull(changedPaths.get("/branches/branch2/module1/bar").getCopyPath());
-		assertEquals("/branches/branch1/module2/baz", changedPaths.get("/branches/branch2/module2/baz").getCopyPath());
-
-		assertEquals(SVNLogEntryPath.TYPE_MODIFIED, changedPaths.get("/branches/branch2/module1/foo").getType());
-		assertEquals(SVNLogEntryPath.TYPE_DELETED, changedPaths.get("/branches/branch2/module1/bar").getType());
-		assertEquals(SVNLogEntryPath.TYPE_ADDED, changedPaths.get("/branches/branch2/module2/baz").getType());
+		assertCopyFrom(mergedEntry, "/branches/branch1/module2/baz", "/branches/branch2/module2/baz");
 	}
 
 	public void testMoveMerge() throws IOException, SVNException {
@@ -125,19 +121,78 @@ public class TestMerge extends TestCase {
 		assertTrue(changedPaths.get("/branches/branch2/module2") != null);
 
 		// Changes have been applied.
-		assertTrue(changedPaths.get("/branches/branch2/module1/foo") != null);
-		assertTrue(changedPaths.get("/branches/branch2/module2/foo") != null);
-		assertTrue(changedPaths.get("/branches/branch2/module2/bar") != null);
-		assertTrue(changedPaths.get("/branches/branch2/module1/bar") != null);
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_DELETED, "/branches/branch2/module1/foo");
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_DELETED, "/branches/branch2/module2/bar");
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_ADDED, "/branches/branch2/module2/foo");
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_ADDED, "/branches/branch2/module1/bar");
 
 		// Intra-branch copy has been created.
-		assertEquals("/branches/branch2/module1/foo", changedPaths.get("/branches/branch2/module2/foo").getCopyPath());
-		assertEquals("/branches/branch2/module2/bar", changedPaths.get("/branches/branch2/module1/bar").getCopyPath());
+		assertCopyFrom(mergedEntry, "/branches/branch2/module1/foo", "/branches/branch2/module2/foo");
+		assertCopyFrom(mergedEntry, "/branches/branch2/module2/bar", "/branches/branch2/module1/bar");
+	}
 
-		assertEquals(SVNLogEntryPath.TYPE_DELETED, changedPaths.get("/branches/branch2/module1/foo").getType());
-		assertEquals(SVNLogEntryPath.TYPE_DELETED, changedPaths.get("/branches/branch2/module2/bar").getType());
-		assertEquals(SVNLogEntryPath.TYPE_ADDED, changedPaths.get("/branches/branch2/module2/foo").getType());
-		assertEquals(SVNLogEntryPath.TYPE_ADDED, changedPaths.get("/branches/branch2/module1/bar").getType());
+	/**
+	 * The source of a move is replaced in the same revision.
+	 */
+	public void testParallelMove() throws IOException, SVNException {
+		Scenario s = moduleScenario();
+
+		// Create scenario base.
+		WC wc1 = s.wc("/branches/branch1");
+		wc1.file("module1/foo");
+		wc1.file("module1/bar");
+		wc1.commit();
+
+		// Create target branch.
+		s.copy("/branches/branch2", "/branches/branch1");
+
+		// Create revision to merge, move foo to module2 and bar to module1.
+		wc1.copy("module1/newfoo", "module1/foo");
+		wc1.delete("module1/foo");
+		wc1.copy("module1/foo", "module1/bar");
+		wc1.delete("module1/bar");
+		long origRevision = wc1.commit();
+
+		SVNLogEntry mergedEntry = doMerge(s, origRevision);
+
+		// Changes have been applied.
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_ADDED, "/branches/branch2/module1/newfoo");
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_REPLACED, "/branches/branch2/module1/foo");
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_DELETED, "/branches/branch2/module1/bar");
+
+		// Intra-branch copy has been created.
+		assertCopyFrom(mergedEntry, "/branches/branch2/module1/foo", "/branches/branch2/module1/newfoo");
+		assertCopyFrom(mergedEntry, "/branches/branch2/module1/bar", "/branches/branch2/module1/foo");
+	}
+
+	public void testMoveOutOfDeletedFolder() throws IOException, SVNException {
+		Scenario s = moduleScenario();
+
+		// Create scenario base.
+		WC wc1 = s.wc("/branches/branch1");
+		wc1.mkdir("module1/folder");
+		wc1.file("module1/folder/foo");
+		wc1.commit();
+
+		// Create target branch.
+		s.copy("/branches/branch-intermediate", "/branches/branch1");
+		s.copy("/branches/branch2", "/branches/branch1");
+
+		// Create revision to merge, move foo to module2 and bar to module1.
+		wc1.copy("module1/foo", "module1/folder/foo");
+		wc1.delete("module1/folder");
+		long origRevision = wc1.commit();
+
+		long rebasedRevision = rebaseSvn(s, origRevision);
+
+		SVNLogEntry mergedEntry = doMerge(s, rebasedRevision);
+
+		// Changes have been applied.
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_DELETED, "/branches/branch2/module1/folder");
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_ADDED, "/branches/branch2/module1/foo");
+
+		// Intra-branch copy has been created.
+		assertCopyFrom(mergedEntry, "/branches/branch2/module1/folder/foo", "/branches/branch2/module1/foo");
 	}
 
 	public void testFixRegularRebasedMove() throws IOException, SVNException {
@@ -157,22 +212,17 @@ public class TestMerge extends TestCase {
 		wc1.delete("module1/foo");
 		long origRevision = wc1.commit();
 
-		// Create rebase of the move with a regular SVN merge creating a cross branch copy.
-		WC wc2 = s.wc("/branches/branch-intermediate");
-		long rebasedRevision = wc2.merge("branches/branch1", origRevision, MERGED_MODULES);
+		long rebasedRevision = rebaseSvn(s, origRevision);
 
 		// Fix the intermediate rebase by applying a semantic move merge.
 		SVNLogEntry mergedEntry = doMerge(s, rebasedRevision);
 
-		Map<String, SVNLogEntryPath> changedPaths = mergedEntry.getChangedPaths();
-
 		// Changes have been applied.
-		assertTrue(changedPaths.get("/branches/branch2/module1/foo") != null);
-		assertTrue(changedPaths.get("/branches/branch2/module1/bar") != null);
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_ADDED, "/branches/branch2/module1/bar");
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_DELETED, "/branches/branch2/module1/foo");
 
 		// Intra-branch copy has been created.
-		assertEquals("/branches/branch2/module1/foo", changedPaths.get("/branches/branch2/module1/bar").getCopyPath());
-		assertEquals(SVNLogEntryPath.TYPE_DELETED, changedPaths.get("/branches/branch2/module1/foo").getType());
+		assertCopyFrom(mergedEntry, "/branches/branch2/module1/foo", "/branches/branch2/module1/bar");
 	}
 
 	public void testShortCircuitRegularRebasedCreate() throws IOException, SVNException {
@@ -187,9 +237,7 @@ public class TestMerge extends TestCase {
 		wc1.file("module1/foo");
 		long origRevision = wc1.commit();
 
-		// Create rebase of the move with a regular SVN merge creating a cross branch copy.
-		WC wc2 = s.wc("/branches/branch-intermediate");
-		long rebasedRevision = wc2.merge("branches/branch1", origRevision, MERGED_MODULES);
+		long rebasedRevision = rebaseSvn(s, origRevision);
 
 		// Fix the intermediate rebase by applying a semantic move merge.
 		SVNLogEntry mergedEntry = doMerge(s, rebasedRevision);
@@ -200,7 +248,14 @@ public class TestMerge extends TestCase {
 		assertTrue(changedPaths.get("/branches/branch2/module1/foo") != null);
 
 		// Direct copy from original branch has been created.
-		assertEquals("/branches/branch1/module1/foo", changedPaths.get("/branches/branch2/module1/foo").getCopyPath());
+		assertCopyFrom(mergedEntry, "/branches/branch1/module1/foo", "/branches/branch2/module1/foo");
+	}
+
+	private long rebaseSvn(Scenario s, long origRevision) throws IOException, SVNException {
+		// Create rebase of the move with a regular SVN merge creating a cross branch copy.
+		WC wc2 = s.wc("/branches/branch-intermediate");
+		long rebasedRevision = wc2.merge("branches/branch1", origRevision, MERGED_MODULES);
+		return rebasedRevision;
 	}
 
 	private SVNLogEntry doMerge(Scenario s, long revision) throws IOException, SVNException {
@@ -243,6 +298,18 @@ public class TestMerge extends TestCase {
 		s.mkdir("/branches/branch1/module2");
 		s.mkdir("/branches/branch1/module3");
 		return s;
+	}
+
+	private static void assertType(SVNLogEntry changedPaths, char expectedType, String path) {
+		SVNLogEntryPath entry = changedPaths.getChangedPaths().get(path);
+		assertNotNull(entry);
+		assertEquals(expectedType, entry.getType());
+	}
+
+	private static void assertCopyFrom(SVNLogEntry mergedEntry, String expectedCopyPath, String path) {
+		SVNLogEntryPath entry = mergedEntry.getChangedPaths().get(path);
+		assertNotNull(entry);
+		assertEquals(expectedCopyPath, entry.getCopyPath());
 	}
 
 }
