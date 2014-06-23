@@ -20,6 +20,8 @@ package test.com.subcherry.scenario;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 import org.tmatesoft.svn.core.SVNCommitInfo;
@@ -30,6 +32,7 @@ import org.tmatesoft.svn.core.wc.ISVNStatusHandler;
 import org.tmatesoft.svn.core.wc.SVNClientManager;
 import org.tmatesoft.svn.core.wc.SVNCopySource;
 import org.tmatesoft.svn.core.wc.SVNRevision;
+import org.tmatesoft.svn.core.wc.SVNRevisionRange;
 import org.tmatesoft.svn.core.wc.SVNStatus;
 import org.tmatesoft.svn.core.wc.SVNWCClient;
 
@@ -129,6 +132,21 @@ public class WC extends FileSystem {
 		clientManager().getStatusClient().
 			doStatus(getDirectory(), SVNRevision.HEAD, SVNDepth.INFINITY, false, false, false, false, handler, null);
 		return modified;
+	}
+
+	public long merge(String branch, long revision, List<String> mergedModules) throws SVNException {
+		SVNURL sourceBranch = scenario().getRepositoryUrl().appendPath(branch, true);
+		SVNRevision baseRevision = SVNRevision.create(revision - 1);
+		SVNRevision svnRevision = SVNRevision.create(revision);
+		SVNRevision pegRevision = svnRevision;
+		Collection<SVNRevisionRange> rangesToMerge = Arrays.asList(new SVNRevisionRange(baseRevision, svnRevision));
+		for (String module : mergedModules) {
+			SVNURL sourceModule = sourceBranch.appendPath(module, true);
+			File targetModule = new File(getDirectory(), module);
+			clientManager().getDiffClient().doMerge(sourceModule, pegRevision, rangesToMerge, targetModule,
+				SVNDepth.INFINITY, true, false, false, false);
+		}
+		return commit();
 	}
 
 }
