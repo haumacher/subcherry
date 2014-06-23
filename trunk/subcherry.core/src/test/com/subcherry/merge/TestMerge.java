@@ -175,6 +175,34 @@ public class TestMerge extends TestCase {
 		assertEquals(SVNLogEntryPath.TYPE_DELETED, changedPaths.get("/branches/branch2/module1/foo").getType());
 	}
 
+	public void testShortCircuitRegularRebasedCreate() throws IOException, SVNException {
+		Scenario s = moduleScenario();
+
+		// Create intermediate branch and target branch.
+		s.copy("/branches/branch-intermediate", "/branches/branch1");
+		s.copy("/branches/branch2", "/branches/branch1");
+
+		// Create original create.
+		WC wc1 = s.wc("/branches/branch1");
+		wc1.file("module1/foo");
+		long origRevision = wc1.commit();
+
+		// Create rebase of the move with a regular SVN merge creating a cross branch copy.
+		WC wc2 = s.wc("/branches/branch-intermediate");
+		long rebasedRevision = wc2.merge("branches/branch1", origRevision, MERGED_MODULES);
+
+		// Fix the intermediate rebase by applying a semantic move merge.
+		SVNLogEntry mergedEntry = doMerge(s, rebasedRevision);
+
+		Map<String, SVNLogEntryPath> changedPaths = mergedEntry.getChangedPaths();
+
+		// Changes have been applied.
+		assertTrue(changedPaths.get("/branches/branch2/module1/foo") != null);
+
+		// Direct copy from original branch has been created.
+		assertEquals("/branches/branch1/module1/foo", changedPaths.get("/branches/branch2/module1/foo").getCopyPath());
+	}
+
 	private SVNLogEntry doMerge(Scenario s, long revision) throws IOException, SVNException {
 		WC wc2 = s.wc("/branches/branch2");
 
