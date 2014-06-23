@@ -92,11 +92,21 @@ public class Merge {
 				try {
 					op.run();
 				} catch (SVNException ex) {
-					if (ex.getErrorMessage().getErrorCode() == SVNErrorCode.WC_PATH_NOT_FOUND) {
+					SVNErrorCode errorCode = ex.getErrorMessage().getErrorCode();
+					boolean missingTarget = errorCode == SVNErrorCode.WC_PATH_NOT_FOUND;
+					boolean alreadyExists = errorCode == SVNErrorCode.ENTRY_EXISTS;
+					if (missingTarget || alreadyExists) {
 						File path = (File) ex.getErrorMessage().getRelatedObjects()[0];
 						SVNNodeKind nodeKind = SVNNodeKind.UNKNOWN;
-						SVNConflictAction conflictAction = SVNConflictAction.EDIT;
-						SVNConflictReason conflictReason = SVNConflictReason.MISSING;
+						SVNConflictAction conflictAction;
+						SVNConflictReason conflictReason;
+						if (missingTarget) {
+							conflictAction = SVNConflictAction.EDIT;
+							conflictReason = SVNConflictReason.MISSING;
+						} else {
+							conflictAction = SVNConflictAction.ADD;
+							conflictReason = SVNConflictReason.OBSTRUCTED;
+						}
 						SVNOperation operation = SVNOperation.MERGE;
 						SVNConflictVersion sourceLeftVersion = null;
 						SVNConflictVersion sourceRightVersion = null;
