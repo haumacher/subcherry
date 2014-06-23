@@ -430,7 +430,7 @@ public class MergeHandler extends Handler<MergeConfig> {
 		if (!copyBranch.equals(targetBranch)) {
 			while (true) {
 				SVNLogEntry origEntry = loadRevision(mergedChange.getChange().getCopyRevision());
-				SVNLogEntryPath origPathEntry = origEntry.getChangedPaths().get(copyPath);
+				SVNLogEntryPath origPathEntry = origEntry.getChangedPaths().get(copyPath.getPath());
 				if (origPathEntry == null) {
 					// Not copied directly from a copy/move changeset.
 					break;
