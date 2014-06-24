@@ -18,6 +18,7 @@ import org.tmatesoft.svn.core.SVNLogEntry;
 import org.tmatesoft.svn.core.wc.SVNClientManager;
 import org.tmatesoft.svn.core.wc.SVNConflictDescription;
 import org.tmatesoft.svn.core.wc.SVNDiffClient;
+import org.tmatesoft.svn.core.wc.SVNTreeConflictDescription;
 
 import com.subcherry.commit.Commit;
 import com.subcherry.commit.CommitContext;
@@ -352,7 +353,12 @@ public class MergeCommitHandler {
 					message.append("text");
 				}
 				if (conflict.isTreeConflict()) {
-					message.append("tree");
+					SVNTreeConflictDescription treeConflict = (SVNTreeConflictDescription) conflict;
+					message.append("tree (");
+					message.append(treeConflict.getConflictAction());
+					message.append(" but locally ");
+					message.append(treeConflict.getConflictReason());
+					message.append(")");
 				}
 			}
 
