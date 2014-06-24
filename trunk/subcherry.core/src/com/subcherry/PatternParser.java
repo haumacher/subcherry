@@ -25,11 +25,17 @@ public class PatternParser extends ObjectParser<Pattern> {
 
 	@Override
 	public Pattern parse(String text) {
+		if (text == null || text.isEmpty()) {
+			return null;
+		}
 		return Pattern.compile(text);
 	}
 
 	@Override
 	public String unparse(Pattern value) {
+		if (value == null) {
+			return "";
+		}
 		return value.pattern();
 	}
 

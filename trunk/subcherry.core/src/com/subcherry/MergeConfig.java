@@ -18,6 +18,7 @@
 package com.subcherry;
 
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import de.haumacher.common.config.annotate.ValueParser;
 
@@ -40,4 +41,9 @@ public interface MergeConfig extends WorkspaceConfig, RepositoryConfig {
 
 	void setRevert(boolean value);
 
+	@ValueParser(PatternParser.class)
+	Pattern getIncludePaths();
+
+	@ValueParser(PatternParser.class)
+	Pattern getExcludePaths();
 }

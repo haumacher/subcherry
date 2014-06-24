@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import org.tmatesoft.svn.core.ISVNLogEntryHandler;
 import org.tmatesoft.svn.core.SVNDepth;
@@ -146,6 +147,10 @@ public class MergeHandler extends Handler<MergeConfig> {
 		boolean hasMoves = false;
 
 		for (SVNLogEntryPath svnPathEntry : pathOrder(logEntry.getChangedPaths().values())) {
+			if (!usePath(svnPathEntry.getPath())) {
+				continue;
+			}
+
 			final Path target = _paths.parsePath(svnPathEntry);
 
 			if (!_modules.contains(target.getModule())) {
@@ -490,6 +495,9 @@ public class MergeHandler extends Handler<MergeConfig> {
 		Map<String, SVNLogEntryPath> changedPaths = logEntry.getChangedPaths();
 		for (Entry<String, SVNLogEntryPath> entry : changedPaths.entrySet()) {
 			SVNLogEntryPath pathEntry = entry.getValue();
+			if (!usePath(pathEntry.getPath())) {
+				continue;
+			}
 
 			Path changedPath = _paths.parsePath(pathEntry);
 			if (changedPath.getBranch() == null) {
@@ -499,6 +507,22 @@ public class MergeHandler extends Handler<MergeConfig> {
 
 			builder.buildMerge(logEntry.getRevision(), changedPath, recordOnly, false);
 		}
+	}
+
+	private boolean usePath(String path) {
+		Pattern excludePaths = _config.getExcludePaths();
+		if (excludePaths != null) {
+			if (excludePaths.matcher(path).matches()) {
+				return false;
+			}
+		}
+		Pattern includePaths = _config.getIncludePaths();
+		if (includePaths != null) {
+			if (!includePaths.matcher(path).matches()) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	String createUrlPrefix(String branch) {
