@@ -43,7 +43,8 @@ public class Utils {
 
 			matcher = TICKET_PATTERN.matcher(commitMessage);
 			if (!matcher.matches()) {
-				throw new IllegalArgumentException("Message " + commitMessage  + " has illegal format."); 
+				throw new IllegalArgumentException("Message of [" + originalRevision + "] '" + commitMessage
+					+ "' has illegal format.");
 			}
 			ticketNumber = getTicketNumber(matcher);
 			apiChange = getApiChange(matcher);
