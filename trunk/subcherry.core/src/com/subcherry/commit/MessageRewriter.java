@@ -28,6 +28,8 @@ import com.subcherry.utils.Utils.TicketMessage;
 
 public class MessageRewriter {
 
+	private static final Pattern REVISION_REF_PATTERN = Pattern.compile("\\[(\\d+)\\]");
+
 	public static MessageRewriter createMessageRewriter(Configuration config, PortingTickets portingTickets,
 			RevisionRewriter revisionRewriter) {
 		if (CommitHandler.ORIGINAL.equals(config.getPortMessage())) {
@@ -129,7 +131,20 @@ public class MessageRewriter {
 	}
 
 	protected void appendOriginalMessage(StringBuilder newMesssage, TicketMessage message) {
-		newMesssage.append(message.originalMessage);
+		String original = message.originalMessage;
+		Matcher matcher = REVISION_REF_PATTERN.matcher(original);
+		int afterLastMatch = 0;
+		while (matcher.find()) {
+			long rewrittenRev = Long.parseLong(matcher.group(1));
+			if (rewrittenRev > 0) {
+				newMesssage.append(original.subSequence(afterLastMatch, matcher.start()));
+				newMesssage.append('[');
+				newMesssage.append(_revisionRewriter.rewrite(rewrittenRev));
+				newMesssage.append(']');
+				afterLastMatch = matcher.end();
+			}
+		}
+		newMesssage.append(original.substring(afterLastMatch));
 	}
 
 	private boolean shouldRevert(String ticketNumber) {
