@@ -19,6 +19,7 @@ package test.com.subcherry.merge;
 
 import static test.com.subcherry.scenario.Scenario.*;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -32,6 +33,7 @@ import org.tmatesoft.svn.core.SVNCommitInfo;
 import org.tmatesoft.svn.core.SVNException;
 import org.tmatesoft.svn.core.SVNLogEntry;
 import org.tmatesoft.svn.core.SVNLogEntryPath;
+import org.tmatesoft.svn.core.wc.SVNConflictDescription;
 
 import test.com.subcherry.scenario.Scenario;
 import test.com.subcherry.scenario.WC;
@@ -227,6 +229,35 @@ public class TestMerge extends TestCase {
 		assertCopyFrom(mergedEntry, "/branches/branch2/module1/folder", "/branches/branch2/module1/newfolder");
 	}
 
+	public void testRegularRebasedFileAddToFolderWithPropertyModification() throws IOException, SVNException {
+		Scenario s = moduleScenario();
+
+		// Create scenario base.
+		WC wc1 = s.wc("/branches/branch1");
+		wc1.mkdir("module1/folder");
+		wc1.commit();
+
+		// Create target branch.
+		s.copy("/branches/branch-intermediate", "/branches/branch1");
+		s.copy("/branches/branch2", "/branches/branch1");
+
+		// Create revision to merge, move foo to module2 and bar to module1.
+		wc1.setProperty("module1/folder", "svn:ignore", "tmp");
+		wc1.file("module1/folder/foo");
+		long origRevision = wc1.commit();
+
+		long rebasedRevision = rebaseSvn(s, origRevision);
+
+		SVNLogEntry mergedEntry = doMerge(s, rebasedRevision);
+
+		// Changes have been applied.
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_MODIFIED, "/branches/branch2/module1/folder");
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_ADDED, "/branches/branch2/module1/folder/foo");
+
+		// Direct source branch copy has been created.
+		assertCopyFrom(mergedEntry, "/branches/branch1/module1/folder/foo", "/branches/branch2/module1/folder/foo");
+	}
+
 	public void testFixRegularRebasedMove() throws IOException, SVNException {
 		Scenario s = moduleScenario();
 
@@ -306,7 +337,8 @@ public class TestMerge extends TestCase {
 		SVNLogEntry entry = s.log(revision);
 		Merge merge = handler.parseMerge(entry);
 		MergeContext context = new MergeContext(s.clientManager().getDiffClient());
-		merge.run(context);
+		Map<File, List<SVNConflictDescription>> conflicts = merge.run(context);
+		assertEquals(Collections.emptyMap(), conflicts);
 
 		CommitConfig commitConfig = ValueFactory.newInstance(CommitConfig.class);
 		commitConfig.setWorkspaceRoot(wc2.getDirectory());

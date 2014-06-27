@@ -27,6 +27,7 @@ import java.util.List;
 import org.tmatesoft.svn.core.SVNCommitInfo;
 import org.tmatesoft.svn.core.SVNDepth;
 import org.tmatesoft.svn.core.SVNException;
+import org.tmatesoft.svn.core.SVNPropertyValue;
 import org.tmatesoft.svn.core.SVNURL;
 import org.tmatesoft.svn.core.wc.ISVNStatusHandler;
 import org.tmatesoft.svn.core.wc.SVNClientManager;
@@ -82,6 +83,12 @@ public class WC extends FileSystem {
 		File file = toFile(path);
 		scenario().fillFileContent(file);
 		add(file);
+	}
+
+	public void setProperty(String path, String name, String value) throws SVNException {
+		File file = toFile(path);
+		clientManager().getWCClient().doSetProperty(file, name, SVNPropertyValue.create(value), false, SVNDepth.EMPTY,
+			null, null);
 	}
 
 	@Override

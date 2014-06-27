@@ -706,7 +706,15 @@ public class MergeHandler extends Handler<MergeConfig> {
 		@Override
 		public void buildMerge(long revision, Path path, boolean recordOnly, boolean ignoreAncestry) throws SVNException {
 			String urlPrefix = createUrlPrefix(path.getBranch());
-			addMergeOperations(revision, path, path.getResource(), urlPrefix, recordOnly, ignoreAncestry);
+			if (path.getPathEntry().getKind() == SVNNodeKind.DIR
+				&& path.getPathEntry().getType() == SVNLogEntryPath.TYPE_MODIFIED) {
+				SvnMerge merge =
+					createModification(revision, path.getResource(), urlPrefix, recordOnly, ignoreAncestry);
+				merge.setDepth(SVNDepth.EMPTY);
+				addOperation(path.getResource(), merge);
+			} else {
+				addMergeOperations(revision, path, path.getResource(), urlPrefix, recordOnly, ignoreAncestry);
+			}
 		}
 	}
 
