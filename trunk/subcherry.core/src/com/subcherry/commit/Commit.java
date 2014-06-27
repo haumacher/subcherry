@@ -3,6 +3,7 @@ package com.subcherry.commit;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -20,6 +21,7 @@ import com.subcherry.CommitConfig;
 import com.subcherry.MergeCommitHandler;
 import com.subcherry.utils.ArrayUtil;
 import com.subcherry.utils.PathParser;
+import com.subcherry.utils.Utils;
 import com.subcherry.utils.Utils.TicketMessage;
 
 /**
@@ -112,7 +114,7 @@ public class Commit {
 		toStringBuilder.append("Commit[");
 		toStringBuilder.append("Msg:").append(getCommitMessage());
 		toStringBuilder.append(',');
-		toStringBuilder.append("Pathes:").append(getAffectedPaths());
+		toStringBuilder.append("Pathes:").append(getTouchedResourcesList());
 		toStringBuilder.append("]");
 		return toStringBuilder.toString();
 	}
@@ -144,6 +146,12 @@ public class Commit {
 		return _touchedResources;
 	}
 
+	public List<String> getTouchedResourcesList() {
+		ArrayList<String> result = new ArrayList<>(_touchedResources);
+		Collections.sort(result);
+		return result;
+	}
+
 	public void addTouchedResources(Set<String> touchedResources) {
 		_touchedResources.addAll(touchedResources);
 	}
@@ -165,11 +173,7 @@ public class Commit {
 	}
 
 	private String toResource(String path) {
-		String root = getWorkspaceRoot().getPath();
-		if (path.startsWith(root)) {
-			return path.substring(root.length());
-		}
-		return path;
+		return Utils.toResource(getWorkspaceRoot(), path);
 	}
 
 	private File getWorkspaceRoot() {

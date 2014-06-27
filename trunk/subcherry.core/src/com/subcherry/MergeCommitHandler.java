@@ -252,8 +252,8 @@ public class MergeCommitHandler {
 					boolean removed = commit.excludeResource(excludedPath);
 					if (!removed) {
 						System.err.println("Not in pathes being committed '" + excludedPath + ":");
-						for (File path : commit.getAffectedPaths()) {
-							System.err.println("   " + path.getPath());
+						for (String path : commit.getTouchedResourcesList()) {
+							System.err.println("   " + path);
 						}
 					}
 					continue;
@@ -336,9 +336,11 @@ public class MergeCommitHandler {
 	public void log(Map<File, List<SVNConflictDescription>> conflicts) {
 		StringBuilder message = new StringBuilder("Merge has conflicts in files:");
 		for (Entry<File, List<SVNConflictDescription>> entry : conflicts.entrySet()) {
+			String absolutePath = entry.getKey().getAbsolutePath();
 			message.append('\n');
-			message.append(entry.getKey().getAbsolutePath());
-			message.append(':').append(' ');
+			message.append(toResource(absolutePath));
+			message.append(':');
+			message.append(' ');
 			boolean first = true;
 			for (SVNConflictDescription conflict : entry.getValue()) {
 				if (first) {
@@ -364,6 +366,10 @@ public class MergeCommitHandler {
 
 		}
 		System.out.println(message.toString());
+	}
+
+	private String toResource(String wcPath) {
+		return Utils.toResource(_config.getWorkspaceRoot(), wcPath);
 	}
 
 	public RevisionRewriter getRevisionRewriter() {

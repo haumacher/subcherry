@@ -1,6 +1,7 @@
 package com.subcherry.utils;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.InputStreamReader;
 import java.util.Collection;
 import java.util.Collections;
@@ -302,6 +303,14 @@ public class Utils {
 		} else {
 			return null;
 		}
+	}
+
+	public static String toResource(File workspaceRoot, String wcPath) {
+		String root = workspaceRoot.getPath();
+		if (wcPath.startsWith(root)) {
+			wcPath = wcPath.substring(root.length());
+		}
+		return wcPath.replace(File.separatorChar, '/');
 	}
 
 }
