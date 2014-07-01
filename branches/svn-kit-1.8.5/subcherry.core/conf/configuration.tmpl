@@ -1,0 +1,89 @@
+#
+# Whether to commit each revision automatically. User interaction is only 
+# required, if the commit fails.
+#
+autoCommit: true;
+
+# the first revision to patch
+startRevision: 1
+
+# The revision in which to resolve the source branch 
+# (e.g. relevant if the source branch does no longer existin in the HEAD revsion).
+pegRevision: 0
+
+# the revision where the merge ends, or 0 for HEAD.
+endRevision: 0
+
+# Whether to automatically detect the modules to merge (from the source branch 
+# at pegRevision and the target workspace).
+detectCommonModules: true
+
+# Modules for which changes must be patched. If not given, all modules on the source branch are used.
+# modules: 
+			
+# Whether to revert changes instead of applying them.
+revert: false
+
+#
+# Whether preview commit messages should be generated.
+#
+preview: false
+
+#
+# Whether Hotfixes are ported. If true, Hotfixes on the source branch are ported by removing the "Hotfix on xxx: " part of the message.  
+#
+#portHotfixes: false
+
+#
+# Would be cool, if a custom commit message pattern could be used. This is not implemented yet.
+#
+#portMessage:\
+#Ticket #{ticketNumber}: Ported to {targetBranch} from {sourceBranch}:{apiChange? API change:} {reverted?Reverted }[{mergedChangeset}]:{originalMessage}
+#previewMessage:\
+#Ticket #{ticketNumber}: Preview on {targetBranch}:{apiChange? API change:} {reverted?Reverted }[{mergedChangeset}]:{originalMessage}
+
+
+# the branch to take changes from 
+sourceBranch: /trunk
+# the branch to commit changes to 
+targetBranch: /branches/xx
+
+# the local workspace root in which merging occurs
+workspaceRoot: 
+
+# URL to access trac and SVN
+tracURL: http://tl/trac/login/xmlrpc
+svnURL: http://tl/svn/top-logic
+
+# If the value of noCommit is 'true' then the changes are applied but not committed
+#noCommit:true
+
+# ',' list of numbers of tickets to port additional
+#additionalTickets:
+
+#
+# Defines arbitrary revisions to be ported. The form of the property is a ',' separated list of revisions.
+#
+#additionalRevisions:
+
+#
+# defines the milestone for which the port is done. If a Ticket contains implementedIn "milestone:<targetMileStone>" 
+# then this ticket is expected to be ported before and will be ignored.  
+#
+targetMilestone: 
+
+#
+# Defines additional milestones which tickets must have to be ported. The form is a ',' separated list of milestones 
+#
+#milestones:
+
+# ',' list of numbers of tickets to ignore during port.
+#ignoreTickets:
+
+#
+# Defines a list of revisions to ignore during merge
+#
+#ignoreRevisions:
+
+# Regular expression that matches a branch at the beginning of a SVN changed log entry path.
+branchPattern: /trunk/[^/]+/|/branches/[^/]+/[^/]+/|/tags/[^/]+/[^/]+/
