@@ -48,14 +48,14 @@ public class ContentSensitiveMerger implements ISvnMerger {
 	@Override
 	public SvnMergeResult mergeText(ISvnMerger baseMerger, File resultFile, File targetAbspath,
 			File detranslatedTargetAbspath, File leftAbspath, File rightAbspath, String targetLabel, String leftLabel,
-			String rightLabel, SVNDiffOptions options) throws SVNException {
+			String rightLabel, SVNDiffOptions options, SVNDiffConflictChoiceStyle style) throws SVNException {
 		if (targetAbspath.getName().endsWith(".properties")) {
 			SVNStatusType result =
 				_propertiesMerger.merge(leftAbspath, detranslatedTargetAbspath, rightAbspath, options, resultFile);
 			return SvnMergeResult.create(result);
 		} else {
 			return baseMerger.mergeText(baseMerger, resultFile, targetAbspath, detranslatedTargetAbspath, leftAbspath,
-				rightAbspath, targetLabel, leftLabel, rightLabel, options);
+				rightAbspath, targetLabel, leftLabel, rightLabel, options, style);
 		}
 	}
 
@@ -63,9 +63,10 @@ public class ContentSensitiveMerger implements ISvnMerger {
 	public SvnMergeResult mergeProperties(ISvnMerger baseMerger, File localAbsPath, SVNNodeKind kind,
 			SVNConflictVersion leftVersion, SVNConflictVersion rightVersion, SVNProperties serverBaseProperties,
 			SVNProperties pristineProperties, SVNProperties actualProperties, SVNProperties propChanges,
-			boolean baseMerge, boolean dryRun) throws SVNException {
+			boolean baseMerge, boolean dryRun, ISVNConflictHandler conflictResolver) throws SVNException {
 		return baseMerger.mergeProperties(baseMerger, localAbsPath, kind, leftVersion, rightVersion,
-			serverBaseProperties, pristineProperties, actualProperties, propChanges, baseMerge, dryRun);
+			serverBaseProperties, pristineProperties, actualProperties, propChanges, baseMerge, dryRun,
+			conflictResolver);
 	}
 
 	@Override
