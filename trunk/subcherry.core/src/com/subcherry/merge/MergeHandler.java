@@ -233,7 +233,8 @@ public class MergeHandler extends Handler<MergeConfig> {
 						removeBeforeMerge = false;
 					}
 
-					{
+					boolean noOpCopy = srcExistsBefore && srcResource.equals(target.getResource());
+					if (!noOpCopy) {
 						if (removeBeforeMerge) {
 							addRemove(target.getResource());
 						}
