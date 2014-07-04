@@ -83,6 +83,8 @@ public class Main {
 		}
 	};
 
+	private static final String[] ROOT = { "/" };
+
 	private static Set<String> _modules;
 
 	public static void main(String[] args) throws IOException, SVNException {
@@ -136,6 +138,48 @@ public class Main {
 		String[] sourcePaths = getLogPaths(sourceBranch);
 		logReader.readLog(sourcePaths, logEntryMatcher);
 
+		HashSet<Long> additionalRevisions = new HashSet<>(config().getAdditionalRevisions().keySet());
+		boolean additionalRevisionsFromOtherBranches;
+		if (!additionalRevisions.isEmpty()) {
+			for (SVNLogEntry foundEntry : logEntryMatcher.getEntries()) {
+				additionalRevisions.remove(foundEntry.getRevision());
+			}
+
+			additionalRevisionsFromOtherBranches = !additionalRevisions.isEmpty();
+			if (additionalRevisionsFromOtherBranches) {
+				LOG.log(Level.INFO, "Reading additional revisions from other branches.");
+
+				// There are addition revisions not found on the source branch, load them
+				// explicitly.
+				for (Long additionalRev : additionalRevisions) {
+					SVNRevision svnAdditionalRev = SVNRevision.create(additionalRev);
+					logReader.setStartRevision(svnAdditionalRev);
+					logReader.setEndRevision(svnAdditionalRev);
+					logReader.readLog(ROOT, logEntryMatcher);
+				}
+			}
+		} else {
+			additionalRevisionsFromOtherBranches = false;
+		}
+
+		List<SVNLogEntry> mergedLogEntries = logEntryMatcher.getEntries();
+		if (additionalRevisionsFromOtherBranches) {
+			Collections.sort(mergedLogEntries, new Comparator<SVNLogEntry>() {
+				@Override
+				public int compare(SVNLogEntry e1, SVNLogEntry e2) {
+					long r1 = e1.getRevision();
+					long r2 = e2.getRevision();
+					if (r1 < r2) {
+						return -1;
+					}
+					if (r1 > r2) {
+						return 1;
+					}
+					return 0;
+				}
+			});
+		}
+
 		LOG.log(Level.INFO, "Reading target history.");
 		HistroyBuilder historyBuilder = new HistroyBuilder(getStartRevision().getNumber());
 		String[] targetPaths = getLogPaths(targetBranch);
@@ -145,8 +189,6 @@ public class Main {
 		logReader.setEndRevision(getEndRevision());
 		logReader.readLog(allPaths, historyBuilder);
 		
-		List<SVNLogEntry> mergedLogEntries = logEntryMatcher.getEntries();
-
 		if (!config().getSkipDependencies()) {
 			analyzeDependencies(historyBuilder, sourceBranch, targetBranch, trac, mergedLogEntries);
 		}
