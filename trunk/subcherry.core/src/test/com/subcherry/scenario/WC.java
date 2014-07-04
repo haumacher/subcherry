@@ -18,7 +18,11 @@
 package test.com.subcherry.scenario;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.CharBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -98,6 +102,15 @@ public class WC extends FileSystem {
 		clientManager().getCopyClient().doCopy(sources, dst, false, false, true);
 	}
 
+	public void copyFromRemote(String toPath, String remoteFromPath, long revision) throws SVNException {
+		SVNRevision svnRevision = SVNRevision.create(revision);
+		SVNCopySource[] sources =
+			{ new SVNCopySource(svnRevision, svnRevision, scenario().getRepositoryUrl()
+				.appendPath(remoteFromPath, true)) };
+		File dst = toFile(toPath);
+		clientManager().getCopyClient().doCopy(sources, dst, false, false, true);
+	}
+
 	private File toFile(String path) {
 		File dir = new File(getDirectory(), path);
 		return dir;
@@ -125,6 +138,25 @@ public class WC extends FileSystem {
 
 	public void update(String path) throws IOException {
 		scenario().fillFileContent(toFile(path));
+	}
+
+	public String load(String path) throws IOException {
+		FileInputStream in = new FileInputStream(toFile(path));
+		try {
+			CharBuffer target = CharBuffer.allocate(500);
+			Reader r = new InputStreamReader(in);
+			try {
+				while (r.read(target) >= 0) {
+					// Read until the end of file is reached.
+				}
+			} finally {
+				r.close();
+			}
+			target.flip();
+			return target.toString();
+		} finally {
+			in.close();
+		}
 	}
 
 	public List<File> getModified() throws SVNException {
