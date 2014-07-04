@@ -389,6 +389,73 @@ public class TestMerge extends TestCase {
 		assertCopyFrom(mergedEntry, null, "/branches/branch2/module1/foo");
 	}
 
+	public void testFixNoOpCopy() throws IOException, SVNException {
+		Scenario s = moduleScenario();
+
+		// Create scenario base.
+		WC wc1 = s.wc("/branches/branch1");
+		wc1.file("module1/foo");
+		wc1.file("module1/bar");
+		String originalContents = wc1.load("module1/foo");
+		assertTrue(!originalContents.isEmpty());
+		long lastRevision = wc1.commit();
+
+		// Create intermediate branch and target branch.
+		s.copy("/branches/branch-intermediate", "/branches/branch1");
+		s.copy("/branches/branch2", "/branches/branch1");
+
+		// Create original change
+		wc1.delete("module1/foo");
+		wc1.copyFromRemote("module1/foo", "/branches/branch1/module1/foo", lastRevision);
+		// Additional change to even force creating a commit.
+		wc1.update("module1/bar");
+		long origRevision = wc1.commit();
+
+		long mergedRevision = origRevision;
+
+		// Fix the intermediate rebase by applying a semantic move merge.
+		SVNLogEntry mergedEntry = doMerge(s, mergedRevision);
+
+		Map<String, SVNLogEntryPath> changedPaths = mergedEntry.getChangedPaths();
+
+		// No changes have been applied.
+		assertNull(changedPaths.get("/branches/branch2/module1/foo"));
+	}
+
+	public void testFixNoOpCopyWithModification() throws IOException, SVNException {
+		Scenario s = moduleScenario();
+
+		// Create scenario base.
+		WC wc1 = s.wc("/branches/branch1");
+		wc1.file("module1/foo");
+		String originalContents = wc1.load("module1/foo");
+		assertTrue(!originalContents.isEmpty());
+		long lastRevision = wc1.commit();
+
+		// Create intermediate branch and target branch.
+		s.copy("/branches/branch-intermediate", "/branches/branch1");
+		s.copy("/branches/branch2", "/branches/branch1");
+
+		// Create original change
+		wc1.delete("module1/foo");
+		wc1.copyFromRemote("module1/foo", "/branches/branch1/module1/foo", lastRevision);
+		wc1.update("module1/foo");
+		long origRevision = wc1.commit();
+
+		long mergedRevision = origRevision;
+
+		// Fix the intermediate rebase by applying a semantic move merge.
+		SVNLogEntry mergedEntry = doMerge(s, mergedRevision);
+
+		Map<String, SVNLogEntryPath> changedPaths = mergedEntry.getChangedPaths();
+
+		// No changes have been applied.
+		assertNotNull(changedPaths.get("/branches/branch2/module1/foo"));
+
+		// No copy has been created, but a simple content change.
+		assertCopyFrom(mergedEntry, null, "/branches/branch2/module1/foo");
+	}
+
 	private long rebaseSvn(Scenario s, long origRevision) throws IOException, SVNException {
 		// Create rebase of the move with a regular SVN merge creating a cross branch copy.
 		WC wc2 = s.wc("/branches/branch-intermediate");
