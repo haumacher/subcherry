@@ -334,11 +334,15 @@ public class MergeCommitHandler {
 	}
 	
 	public void log(Map<File, List<SVNConflictDescription>> conflicts) {
+		System.out.println(toStringConflicts(_config.getWorkspaceRoot(), conflicts));
+	}
+
+	public static String toStringConflicts(File workspaceRoot, Map<File, List<SVNConflictDescription>> conflicts) {
 		StringBuilder message = new StringBuilder("Merge has conflicts in files:");
 		for (Entry<File, List<SVNConflictDescription>> entry : conflicts.entrySet()) {
 			String absolutePath = entry.getKey().getAbsolutePath();
 			message.append('\n');
-			message.append(toResource(absolutePath));
+			message.append(Utils.toResource(workspaceRoot, absolutePath));
 			message.append(':');
 			message.append(' ');
 			boolean first = true;
@@ -365,11 +369,7 @@ public class MergeCommitHandler {
 			}
 
 		}
-		System.out.println(message.toString());
-	}
-
-	private String toResource(String wcPath) {
-		return Utils.toResource(_config.getWorkspaceRoot(), wcPath);
+		return message.toString();
 	}
 
 	public RevisionRewriter getRevisionRewriter() {

@@ -40,6 +40,7 @@ import test.com.subcherry.scenario.WC;
 
 import com.subcherry.BranchConfig;
 import com.subcherry.CommitConfig;
+import com.subcherry.MergeCommitHandler;
 import com.subcherry.MergeConfig;
 import com.subcherry.commit.Commit;
 import com.subcherry.commit.CommitContext;
@@ -60,6 +61,8 @@ import de.haumacher.common.config.ValueFactory;
 public class TestMerge extends TestCase {
 
 	private static final List<String> MERGED_MODULES = Arrays.asList("module1", "module2");
+
+	private static final String NL = System.getProperty("line.separator");
 
 	public void testRegularMerge() throws IOException, SVNException {
 		Scenario s = moduleScenario();
@@ -471,6 +474,7 @@ public class TestMerge extends TestCase {
 
 		// Create original change
 		wc1.mkdir("module1/folder");
+		wc1.setProperty("module1/folder", "svn:ignore", "tmp" + NL);
 		wc1.copy("module1/folder/foo", "module1/foo");
 		wc1.copy("module1/folder/bar", "module1/bar");
 		wc1.delete("module1/foo");
@@ -478,6 +482,8 @@ public class TestMerge extends TestCase {
 		wc1.mkdir("module1/folder/sub");
 		wc1.file("module1/folder/sub/zzz");
 		long origRevision = wc1.commit();
+
+		assertEquals("tmp" + NL, wc1.getProperty("module1/folder", "svn:ignore"));
 
 		long mergedRevision = origRevision;
 
@@ -500,6 +506,9 @@ public class TestMerge extends TestCase {
 		assertCopyFrom(mergedEntry, "/branches/branch2/module1/bar", "/branches/branch2/module1/folder/bar");
 		assertCopyFrom(mergedEntry, "/branches/branch1/module1/folder/zzz", "/branches/branch2/module1/folder/zzz");
 		assertCopyFrom(mergedEntry, "/branches/branch1/module1/folder/sub", "/branches/branch2/module1/folder/sub");
+		
+		WC wc2 = s.wc("/branches/branch2");
+		assertEquals("tmp" + NL, wc2.getProperty("module1/folder", "svn:ignore"));
 	}
 
 	private long rebaseSvn(Scenario s, long origRevision) throws IOException, SVNException {
@@ -526,7 +535,7 @@ public class TestMerge extends TestCase {
 		Merge merge = handler.parseMerge(entry);
 		MergeContext context = new MergeContext(s.clientManager().getDiffClient());
 		Map<File, List<SVNConflictDescription>> conflicts = merge.run(context);
-		assertEquals(Collections.emptyMap(), conflicts);
+		assertTrue(MergeCommitHandler.toStringConflicts(wc2.getDirectory(), conflicts), conflicts.isEmpty());
 
 		CommitConfig commitConfig = ValueFactory.newInstance(CommitConfig.class);
 		commitConfig.setWorkspaceRoot(wc2.getDirectory());
