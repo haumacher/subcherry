@@ -307,8 +307,9 @@ public class Utils {
 
 	public static String toResource(File workspaceRoot, String wcPath) {
 		String root = workspaceRoot.getPath();
-		if (wcPath.startsWith(root)) {
-			wcPath = wcPath.substring(root.length());
+		if (wcPath.length() > root.length() && wcPath.startsWith(root)
+			&& wcPath.charAt(root.length()) == File.separatorChar) {
+			wcPath = wcPath.substring(root.length() + 1);
 		}
 		return wcPath.replace(File.separatorChar, '/');
 	}
