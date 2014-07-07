@@ -36,6 +36,7 @@ import org.tmatesoft.svn.core.SVNURL;
 import org.tmatesoft.svn.core.wc.ISVNStatusHandler;
 import org.tmatesoft.svn.core.wc.SVNClientManager;
 import org.tmatesoft.svn.core.wc.SVNCopySource;
+import org.tmatesoft.svn.core.wc.SVNPropertyData;
 import org.tmatesoft.svn.core.wc.SVNRevision;
 import org.tmatesoft.svn.core.wc.SVNRevisionRange;
 import org.tmatesoft.svn.core.wc.SVNStatus;
@@ -157,6 +158,16 @@ public class WC extends FileSystem {
 		} finally {
 			in.close();
 		}
+	}
+
+	public String getProperty(String path, String property) throws SVNException {
+		SVNWCClient wcClient = scenario().clientManager().getWCClient();
+		SVNPropertyData data =
+			wcClient.doGetProperty(new File(_wcPath, path), property, SVNRevision.WORKING, SVNRevision.WORKING);
+		if (data == null) {
+			return null;
+		}
+		return data.getValue().getString();
 	}
 
 	public List<File> getModified() throws SVNException {
