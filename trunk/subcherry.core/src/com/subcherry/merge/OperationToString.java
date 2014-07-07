@@ -41,6 +41,9 @@ public class OperationToString {
 		if (op instanceof SvnScheduleForRemoval) {
 			return toStringRemove((SvnScheduleForRemoval) op);
 		}
+		if (op instanceof LocalMkDir) {
+			return toStringLocalMkDir((LocalMkDir) op);
+		}
 	
 		return op.toString();
 	}
@@ -79,6 +82,13 @@ public class OperationToString {
 		appendDepth(buffer, copy.getDepth());
 		appendCopySources(buffer, copy.getSources());
 		appendTargets(buffer, copy.getTargets());
+		return buffer.toString();
+	}
+
+	public static String toStringLocalMkDir(LocalMkDir mkDir) {
+		StringBuilder buffer = new StringBuilder();
+		buffer.append("svn mkdir");
+		appendTargets(buffer, mkDir.getTargets());
 		return buffer.toString();
 	}
 

@@ -18,6 +18,7 @@
 package com.subcherry.utils;
 
 import org.tmatesoft.svn.core.SVNLogEntryPath;
+import org.tmatesoft.svn.core.SVNNodeKind;
 
 import com.subcherry.history.ChangeType;
 
@@ -85,6 +86,18 @@ public class Path {
 	@Override
 	public String toString() {
 		return getPath();
+	}
+
+	public boolean isDir() {
+		return getKind() == SVNNodeKind.DIR;
+	}
+
+	public boolean isFile() {
+		return getKind() == SVNNodeKind.FILE;
+	}
+
+	public SVNNodeKind getKind() {
+		return getPathEntry().getKind();
 	}
 
 }

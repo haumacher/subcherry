@@ -146,8 +146,12 @@ public class MergeHandler extends Handler<MergeConfig> {
 
 		boolean hasMoves = false;
 
-		for (SVNLogEntryPath svnPathEntry : pathOrder(logEntry.getChangedPaths().values())) {
-			if (!usePath(svnPathEntry.getPath())) {
+		List<SVNLogEntryPath> entries = pathOrder(logEntry.getChangedPaths().values());
+		for (int index = 0, cnt = entries.size(); index < cnt; index++) {
+			SVNLogEntryPath svnPathEntry = entries.get(index);
+
+			String pathName = svnPathEntry.getPath();
+			if (!usePath(pathName)) {
 				continue;
 			}
 
@@ -167,6 +171,37 @@ public class MergeHandler extends Handler<MergeConfig> {
 			}
 
 			if (target.getCopyPath() == null) {
+				if (target.isDir() && (target.getType() == ChangeType.ADDED || target.getType() == ChangeType.REPLACED)) {
+					// Test, whether children nodes have copy-from information. In that case, the
+					// created directory cannot be cross-branch copied, to allow handling copies
+					// (from outside) in the created directory.
+					boolean containsCopiedPaths = false;
+					for (int childIndex = index + 1; childIndex < cnt; childIndex++) {
+						SVNLogEntryPath childEntry = entries.get(childIndex);
+						String childPathName = childEntry.getPath();
+						if (childPathName.length() < pathName.length() + 1) {
+							break;
+						}
+						if (!childPathName.startsWith(pathName)) {
+							break;
+						}
+						if (childPathName.charAt(pathName.length()) != '/') {
+							break;
+						}
+
+						if (childEntry.getCopyPath() != null) {
+							containsCopiedPaths = true;
+							break;
+						}
+					}
+
+					if (containsCopiedPaths) {
+						SvnOperation<?> mkDir = mkDir(target.getResource());
+						addOperation(target.getResource(), mkDir);
+						continue;
+					}
+				}
+
 				// Plain add or modify, no source specified. Merge directly.
 				directMerge(logEntry.getRevision(), target);
 				continue;
@@ -287,6 +322,12 @@ public class MergeHandler extends Handler<MergeConfig> {
 			_crossMergedDirectories.clear();
 		}
 		return hasMoves;
+	}
+
+	private SvnOperation<?> mkDir(String resource) {
+		SvnOperation<Void> localMkDir = new LocalMkDir(operations());
+		localMkDir.setSingleTarget(SvnTarget.fromFile(new File(_config.getWorkspaceRoot(), resource)));
+		return localMkDir;
 	}
 
 	private boolean anchestorCrossMerged(String resource) {
