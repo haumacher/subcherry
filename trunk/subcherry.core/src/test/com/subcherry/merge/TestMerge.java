@@ -389,7 +389,8 @@ public class TestMerge extends TestCase {
 		assertEquals(changedRevertedContents, wc2.load("module1/foo"));
 
 		// No copy has been created, but a simple content change.
-		assertCopyFrom(mergedEntry, null, "/branches/branch2/module1/foo");
+		assertCopyFrom("A cross-branch copy has been created, where it is not expceted.",
+			mergedEntry, null, "/branches/branch2/module1/foo");
 	}
 
 	public void testFixNoOpCopy() throws IOException, SVNException {
@@ -508,7 +509,47 @@ public class TestMerge extends TestCase {
 		assertCopyFrom(mergedEntry, "/branches/branch1/module1/folder/sub", "/branches/branch2/module1/folder/sub");
 		
 		WC wc2 = s.wc("/branches/branch2");
-		assertEquals("tmp" + NL, wc2.getProperty("module1/folder", "svn:ignore"));
+		assertEquals("Property of new folder has not been copied.",
+			"tmp" + NL, wc2.getProperty("module1/folder", "svn:ignore"));
+	}
+
+	public void testMoveIntoRevertedFolder() throws IOException, SVNException {
+		Scenario s = moduleScenario();
+
+		// Create scenario base.
+		WC wc1 = s.wc("/branches/branch1");
+		wc1.mkdir("module1/oldfolder");
+		wc1.file("module1/oldfolder/foo");
+		wc1.file("module1/bar");
+		long revertRevision = wc1.commit();
+
+		wc1.update("module1/oldfolder/foo");
+		wc1.commit();
+
+		// Create intermediate branch and target branch.
+		s.copy("/branches/branch-intermediate", "/branches/branch1");
+		s.copy("/branches/branch2", "/branches/branch1");
+
+		// Create original change
+		wc1.copyFromRemote("module1/newfolder", "/branches/branch1/module1/oldfolder", revertRevision);
+		wc1.copy("module1/newfolder/bar", "module1/bar");
+		wc1.delete("module1/bar");
+		long origRevision = wc1.commit();
+
+		long mergedRevision = origRevision;
+
+		// Fix the intermediate rebase by applying a semantic move merge.
+		SVNLogEntry mergedEntry = doMerge(s, mergedRevision);
+
+		// No changes have been applied.
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_ADDED, "/branches/branch2/module1/newfolder");
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_ADDED, "/branches/branch2/module1/newfolder/bar");
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_DELETED, "/branches/branch2/module1/bar");
+
+		// Folders that are targets of branch local copies must not be cross-branch copied
+		// themselves.
+		assertCopyFrom(mergedEntry, "/branches/branch1/module1/oldfolder", "/branches/branch2/module1/newfolder");
+		assertCopyFrom(mergedEntry, "/branches/branch2/module1/bar", "/branches/branch2/module1/newfolder/bar");
 	}
 
 	private long rebaseSvn(Scenario s, long origRevision) throws IOException, SVNException {
@@ -568,9 +609,13 @@ public class TestMerge extends TestCase {
 	}
 
 	private static void assertCopyFrom(SVNLogEntry mergedEntry, String expectedCopyPath, String path) {
+		assertCopyFrom(null, mergedEntry, expectedCopyPath, path);
+	}
+
+	private static void assertCopyFrom(String message, SVNLogEntry mergedEntry, String expectedCopyPath, String path) {
 		SVNLogEntryPath entry = mergedEntry.getChangedPaths().get(path);
 		assertPathExistsInChangeSet(entry, path);
-		assertEquals(expectedCopyPath, entry.getCopyPath());
+		assertEquals(message, expectedCopyPath, entry.getCopyPath());
 	}
 
 	private static void assertPathExistsInChangeSet(SVNLogEntryPath entry, String path) {

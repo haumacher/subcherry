@@ -196,6 +196,9 @@ public class MergeHandler extends Handler<MergeConfig> {
 					}
 
 					if (containsCopiedPaths) {
+						if (target.getType() == ChangeType.REPLACED) {
+							addRemove(target.getResource());
+						}
 						SvnOperation<?> mkDir = mkDir(target.getResource());
 						addOperation(target.getResource(), mkDir);
 						continue;
@@ -308,7 +311,11 @@ public class MergeHandler extends Handler<MergeConfig> {
 					// first original intra-branch copy).
 					for (int n = sources.size() - 1; n >= 0; n--) {
 						ResourceChange mergedChange = sources.get(n);
-						mergeContentChanges(target.getResource(), svnTarget, mergedChange);
+						SvnMerge merge = mergeContentChanges(svnTarget, mergedChange);
+						if (n == 0) {
+							merge.setDepth(SVNDepth.EMPTY);
+						}
+						addOperation(target.getResource(), merge);
 					}
 				}
 			}
@@ -354,7 +361,7 @@ public class MergeHandler extends Handler<MergeConfig> {
 		return _virtualFs.exists(resource);
 	}
 
-	private void mergeContentChanges(String targetResource, SvnTarget target, ResourceChange mergedChange)
+	private SvnMerge mergeContentChanges(SvnTarget target, ResourceChange mergedChange)
 			throws SVNException {
 		SVNLogEntry mergedChangeSet = mergedChange.getChangeSet();
 		long mergedRevision = mergedChangeSet.getRevision();
@@ -384,7 +391,7 @@ public class MergeHandler extends Handler<MergeConfig> {
 		merge.addRevisionRange(SvnRevisionRange.create(revisionBefore, changeRevision));
 		merge.setSource(mergeSource, false);
 		merge.setSingleTarget(target);
-		addOperation(targetResource, merge);
+		return merge;
 	}
 
 	/**
