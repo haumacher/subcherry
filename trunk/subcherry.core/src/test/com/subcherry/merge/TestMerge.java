@@ -371,6 +371,8 @@ public class TestMerge extends TestCase {
 		// Create original change
 		wc1.delete("module1/foo");
 		wc1.copyFromRemote("module1/foo", "/branches/branch1/module1/foo", oldRevision);
+		String copiedContents = wc1.load("module1/foo");
+		assertEquals(originalContents, copiedContents);
 		wc1.update("module1/foo");
 		String changedRevertedContents = wc1.load("module1/foo");
 		long origRevision = wc1.commit();
@@ -520,6 +522,7 @@ public class TestMerge extends TestCase {
 		WC wc1 = s.wc("/branches/branch1");
 		wc1.mkdir("module1/oldfolder");
 		wc1.file("module1/oldfolder/foo");
+		String originalFooContents = wc1.load("module1/oldfolder/foo");
 		wc1.file("module1/bar");
 		long revertRevision = wc1.commit();
 
@@ -548,8 +551,13 @@ public class TestMerge extends TestCase {
 
 		// Folders that are targets of branch local copies must not be cross-branch copied
 		// themselves.
-		assertCopyFrom(mergedEntry, "/branches/branch1/module1/oldfolder", "/branches/branch2/module1/newfolder");
+		assertCopyFrom(mergedEntry, "/branches/branch2/module1/oldfolder", "/branches/branch2/module1/newfolder");
 		assertCopyFrom(mergedEntry, "/branches/branch2/module1/bar", "/branches/branch2/module1/newfolder/bar");
+
+		WC wc2 = s.wc("/branches/branch2");
+		String mergedFooContents = wc2.load("module1/newfolder/foo");
+		assertEquals("The contents revert was not performed in the merge result.",
+			originalFooContents, mergedFooContents);
 	}
 
 	private long rebaseSvn(Scenario s, long origRevision) throws IOException, SVNException {
