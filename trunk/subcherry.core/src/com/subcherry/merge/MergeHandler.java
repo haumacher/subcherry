@@ -238,25 +238,11 @@ public class MergeHandler extends Handler<MergeConfig> {
 					File targetFile = new File(_config.getWorkspaceRoot(), target.getResource());
 
 					long copiedRevision = srcResourceChange.getCopyRevision();
+					List<SVNLogEntry> intermediateChanges = Collections.emptyList();
 					if (srcExistsBefore) {
 						if (copiedRevision < srcRevision - 1) {
 							// The copy potentially is a revert.
-							int changeCount = getChangeCount(srcPath.getPath(), copiedRevision, srcRevision);
-							if (changeCount > 0) {
-								// There was a commit on the copied resource between the merged revision
-								// and the revision from which was copied from. De-facto, this commit
-								// reverts the copied resource to a version not currently alive. Such
-								// revert cannot be easily done within the current working copy, because
-								// it is unclear what is the corrensponding revision, to which the
-								// copied file should be reverted.
-								
-								// TODO: The revert should be transformed to a file-system copy of the
-								// contents of the previous version (the copy source) into the target
-								// resouce plus applying the changes in the merged revision.
-
-								// Create a cross-branch copy.
-								srcExistsBefore = false;
-							}
+							intermediateChanges = getChanges(srcPath.getPath(), copiedRevision, srcRevision);
 						}
 					}
 
@@ -307,6 +293,43 @@ public class MergeHandler extends Handler<MergeConfig> {
 						_virtualFs.add(target.getResource());
 					}
 
+					if (intermediateChanges.size() > 0) {
+						// There was a commit on the copied resource between the merged revision
+						// and the revision from which was copied from. De-facto, this commit
+						// reverts the copied resource to a version not currently alive. Such
+						// revert cannot be easily done within the current working copy, because
+						// it is unclear what is the corrensponding revision, to which the
+						// copied file must be reverted.
+
+						SVNRevision startRevision = SVNRevision.create(srcRevision - 1);
+						SVNRevision endRevision = SVNRevision.create(copiedRevision);
+						SVNRevision pegRevision = startRevision;
+
+						String mergeSourcePath = srcResourceChange.getCopyPath().getPath();
+						SvnTarget mergeSource =
+							SvnTarget.fromURL(svnUrl(_config.getSvnURL() + mergeSourcePath), pegRevision);
+
+						SvnMerge merge = operations().createMerge();
+						merge.setAllowMixedRevisions(true);
+						merge.setIgnoreAncestry(true);
+						merge.addRevisionRange(SvnRevisionRange.create(startRevision, endRevision));
+						merge.setSource(mergeSource, false);
+						merge.setSingleTarget(svnTarget);
+						addOperation(target.getResource(), merge);
+
+						for (SVNLogEntry intermediateChange : intermediateChanges) {
+							for (SVNLogEntryPath changedPathEntry : intermediateChange.getChangedPaths().values()) {
+								String originalRevertPath = changedPathEntry.getPath();
+								if (!isSubPath(originalRevertPath, mergeSourcePath)) {
+									continue;
+								}
+
+								String rewrittenRevertPath = target.getPath() + originalRevertPath.substring(mergeSourcePath.length());
+								addCommitResource(_paths.parsePath(rewrittenRevertPath).getResource());
+							}
+						}
+					}
+
 					// Apply potential content changes throughout the copy chain (starting with the
 					// first original intra-branch copy).
 					for (int n = sources.size() - 1; n >= 0; n--) {
@@ -329,6 +352,11 @@ public class MergeHandler extends Handler<MergeConfig> {
 			_crossMergedDirectories.clear();
 		}
 		return hasMoves;
+	}
+
+	private static boolean isSubPath(String subPath, String parentPath) {
+		int parentLength = parentPath.length();
+		return subPath.length() > parentLength && subPath.startsWith(parentPath) && subPath.charAt(parentLength) == '/';
 	}
 
 	private SvnOperation<?> mkDir(String resource) {
@@ -404,19 +432,19 @@ public class MergeHandler extends Handler<MergeConfig> {
 	 *        The source revision of the copy.
 	 * @param mergedRevision
 	 *        The revision committing the copy.
-	 * @return The number of changes to the given path between the two given revisions (exclusive).
+	 * @return The changes to the given path between the two given revisions (exclusive).
 	 */
-	private int getChangeCount(String path, long copiedRevision, long mergedRevision) throws SVNException {
+	private List<SVNLogEntry> getChanges(String path, long copiedRevision, long mergedRevision) throws SVNException {
 		class Counter implements ISVNLogEntryHandler {
-			private int _cnt;
+			private final List<SVNLogEntry> _changes = new ArrayList<>();
 
 			@Override
 			public void handleLogEntry(SVNLogEntry intermediateChange) throws SVNException {
-				_cnt++;
+				_changes.add(intermediateChange);
 			}
 
-			public int getCnt() {
-				return _cnt;
+			public List<SVNLogEntry> getChanges() {
+				return _changes;
 			}
 		}
 		Counter counter = new Counter();
@@ -425,9 +453,9 @@ public class MergeHandler extends Handler<MergeConfig> {
 		SVNRevision copiedSvnRevision = SVNRevision.create(copiedRevision);
 		_clientManager.getLogClient().doLog(svnUrl(_config.getSvnURL()),
 			new String[] { path }, copiedSvnRevision, beforeMergedSvnRevision,
-			afterCopiedRevision, true, false, false, 0, NO_PROPERTIES,
+			afterCopiedRevision, true, true, false, 0, NO_PROPERTIES,
 			counter);
-		return counter.getCnt();
+		return counter.getChanges();
 	}
 
 	private void directMerge(long revision, Path target) throws SVNException {
