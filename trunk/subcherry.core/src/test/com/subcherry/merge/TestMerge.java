@@ -26,8 +26,12 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import junit.framework.AssertionFailedError;
+import junit.framework.Test;
 import junit.framework.TestCase;
+import junit.framework.TestSuite;
 
 import org.tmatesoft.svn.core.SVNCommitInfo;
 import org.tmatesoft.svn.core.SVNException;
@@ -63,6 +67,81 @@ public class TestMerge extends TestCase {
 	private static final List<String> MERGED_MODULES = Arrays.asList("module1", "module2");
 
 	private static final String NL = System.getProperty("line.separator");
+
+	public void testCrossBranchCopyWithExistingResourceWithSameName() throws IOException, SVNException {
+		Scenario s = moduleScenario();
+
+		// Create target branch.
+		s.copy("/branches/branch2", "/branches/branch1");
+		s.copy("/branches/branch3", "/branches/branch1");
+
+		// Create scenario base.
+		WC wc1 = s.wc("/branches/branch1");
+		wc1.mkdir("module1/foo");
+		wc1.file("module1/foo/file1");
+		long r1 = wc1.commit();
+
+		// Create a revision <b>not</b> to revert in merge
+		wc1.file("module1/foo/file2");
+		wc1.commit();
+
+		// An folder with name of the merge source exists by accident
+		s.mkdir("/branches/branch2/module1/foo");
+
+		long revision = s.copy("/branches/branch3/module1/bar", "/branches/branch1/module1/foo", r1);
+
+		SVNLogEntry mergedEntry = doMerge(s, revision);
+		assertCopyFrom(mergedEntry, "/branches/branch1/module1/foo", "/branches/branch2/module1/bar");
+	}
+
+	public void testMergeFolderInReverseCommitOrder() throws IOException, SVNException {
+		Scenario s = moduleScenario();
+
+		// Create scenario base.
+		WC wc1 = s.wc("/branches/branch1");
+		wc1.mkdir("module1/foo");
+		wc1.commit();
+
+		// Create target branch.
+		s.copy("/branches/branch2", "/branches/branch1");
+		s.copy("/branches/branch3", "/branches/branch1");
+
+		wc1.mkdir("module1/foo/bar");
+		wc1.file("module1/foo/bar/file1");
+		wc1.commit();
+
+		// Second revision to merge
+		long revision = s.copy("/branches/branch3/module1/foo/bar", "/branches/branch1/module1/foo/bar");
+
+		// First revision to merge
+		wc1.file("module1/foo/bar/file2");
+		wc1.commit();
+		long revision2 = s.copy("/branches/branch3/module1/foo/bar/file2", "/branches/branch1/module1/foo/bar/file2");
+
+		WC wc2 = s.wc("/branches/branch2");
+		SVNLogEntry entry = s.log(revision2);
+		Merge merge = createMerge(s, wc2, entry);
+		doMerge(s, wc2, merge);
+		Set<String> commitResources = new HashSet<String>(merge.getTouchedResources());
+		// currently a bug that the parent of the created file is not contained in the touched
+		// resources
+		boolean added = commitResources.add("module1/foo/bar");
+		assertTrue("Remove temporary code to workaround a bug", added);
+		Commit commit = createCommit(s, wc2, entry, commitResources);
+		doCommit(s, wc2, commit);
+
+		SVNLogEntry mergedEntry;
+		try {
+			mergedEntry = doMerge(s, revision);
+		} catch (AssertionFailedError err) {
+			AssertionFailedError assertionFailedError =
+				new AssertionFailedError(
+					"Conflict has to be resolved automatically: if the folder already exists, the contents of the source folder must be copied.");
+			assertionFailedError.initCause(err);
+			throw assertionFailedError;
+		}
+		Map<String, SVNLogEntryPath> changedPaths = mergedEntry.getChangedPaths();
+	}
 
 	public void testRegularMerge() throws IOException, SVNException {
 		Scenario s = moduleScenario();
@@ -569,35 +648,53 @@ public class TestMerge extends TestCase {
 
 	private SVNLogEntry doMerge(Scenario s, long revision) throws IOException, SVNException {
 		WC wc2 = s.wc("/branches/branch2");
+		SVNLogEntry entry = s.log(revision);
 
+		Merge merge = createMerge(s, wc2, entry);
+		doMerge(s, wc2, merge);
+
+		Commit commit = createCommit(s, wc2, entry, merge.getTouchedResources());
+		SVNCommitInfo info = doCommit(s, wc2, commit);
+
+		return s.log(info.getNewRevision());
+	}
+
+	private SVNCommitInfo doCommit(Scenario s, WC wc, Commit commit) throws SVNException {
+		SVNCommitInfo info =
+			commit.run(new CommitContext(s.clientManager().getUpdateClient(), s.clientManager().getCommitClient()));
+
+		assertEquals("Not all merged resources were committed.", Collections.emptyList(), wc.getModified());
+		return info;
+	}
+
+	private Commit createCommit(Scenario s, WC wc, SVNLogEntry entry, Set<String> resources) {
+		CommitConfig commitConfig = ValueFactory.newInstance(CommitConfig.class);
+		commitConfig.setWorkspaceRoot(wc.getDirectory());
+		Commit commit = new Commit(commitConfig, entry, null);
+		commit.setCommitMessage(s.createMessage());
+		commit.addTouchedResources(resources);
+		return commit;
+	}
+
+	private void doMerge(Scenario s, WC wc, Merge merge) throws SVNException {
+		MergeContext context = new MergeContext(s.clientManager().getDiffClient());
+		Map<File, List<SVNConflictDescription>> conflicts = merge.run(context);
+		assertTrue(MergeCommitHandler.toStringConflicts(wc.getDirectory(), conflicts), conflicts.isEmpty());
+	}
+
+	private Merge createMerge(Scenario s, WC wc, SVNLogEntry entry) throws SVNException {
 		MergeConfig mergeConfig = ValueFactory.newInstance(MergeConfig.class);
 		mergeConfig.setSvnURL(s.getRepositoryUrl().toDecodedString());
 		mergeConfig.setSemanticMoves(true);
-		mergeConfig.setWorkspaceRoot(wc2.getDirectory());
+		mergeConfig.setWorkspaceRoot(wc.getDirectory());
 		BranchConfig branchConfig = ValueFactory.newInstance(BranchConfig.class);
 		branchConfig.setBranchPattern("/branches/[^/]+/");
 		MergeHandler handler =
 			new MergeHandler(s.clientManager(), mergeConfig, new PathParser(branchConfig), new HashSet<>(
 				MERGED_MODULES));
 
-		SVNLogEntry entry = s.log(revision);
 		Merge merge = handler.parseMerge(entry);
-		MergeContext context = new MergeContext(s.clientManager().getDiffClient());
-		Map<File, List<SVNConflictDescription>> conflicts = merge.run(context);
-		assertTrue(MergeCommitHandler.toStringConflicts(wc2.getDirectory(), conflicts), conflicts.isEmpty());
-
-		CommitConfig commitConfig = ValueFactory.newInstance(CommitConfig.class);
-		commitConfig.setWorkspaceRoot(wc2.getDirectory());
-		Commit commit = new Commit(commitConfig, entry, null);
-		commit.setCommitMessage(s.createMessage());
-		commit.addTouchedResources(merge.getTouchedResources());
-		SVNCommitInfo info =
-			commit.run(new CommitContext(s.clientManager().getUpdateClient(), s.clientManager().getCommitClient()));
-
-		assertEquals("Not all merged resources were committed.", Collections.emptyList(), wc2.getModified());
-
-		SVNLogEntry mergedEntry = s.log(info.getNewRevision());
-		return mergedEntry;
+		return merge;
 	}
 
 	private Scenario moduleScenario() throws IOException, SVNException {
@@ -634,4 +731,16 @@ public class TestMerge extends TestCase {
 		assertNull(mergedEntry.getChangedPaths().get(path));
 	}
 
+	/**
+	 * @return a cumulative {@link Test} for all Tests in {@link TestMerge}.
+	 */
+	@SuppressWarnings("unused")
+	public static Test suite() {
+		if (!true) {
+			TestCase t = new TestMerge();
+			t.setName("testMergeFolderConflict4");
+			return t;
+		}
+		return new TestSuite(TestMerge.class);
+	}
 }
