@@ -222,10 +222,11 @@ public class MergeHandler extends Handler<MergeConfig> {
 				String srcModule = srcPath.getModule();
 				String srcResource = srcPath.getResource();
 
+				boolean intraBranchCopy = srcResourceChange.getBranch().equals(srcPath.getBranch());
 				{
 					File srcFile;
 					boolean srcExistsBefore;
-					if (_modules.contains(srcModule)) {
+					if (intraBranchCopy && _modules.contains(srcModule)) {
 						srcFile = new File(_config.getWorkspaceRoot(), srcResource);
 						srcExistsBefore = srcFile.exists();
 					} else {
