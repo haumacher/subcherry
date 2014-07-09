@@ -77,17 +77,19 @@ public class WC extends FileSystem {
 	}
 
 	@Override
-	public void mkdir(String path) throws SVNException {
+	public long mkdir(String path) throws SVNException {
 		File dir = toFile(path);
 		dir.mkdirs();
 		add(dir);
+		return -1;
 	}
 
 	@Override
-	public void file(String path) throws SVNException, IOException {
+	public long file(String path) throws SVNException, IOException {
 		File file = toFile(path);
 		scenario().fillFileContent(file);
 		add(file);
+		return -1;
 	}
 
 	public void setProperty(String path, String name, String value) throws SVNException {
@@ -97,10 +99,20 @@ public class WC extends FileSystem {
 	}
 
 	@Override
-	public void copy(String toPath, String fromPath) throws SVNException {
-		SVNCopySource[] sources = { new SVNCopySource(SVNRevision.BASE, SVNRevision.BASE, toFile(fromPath)) };
+	public long copy(String toPath, String fromPath) throws SVNException {
+		return internalCopy(toPath, fromPath, SVNRevision.BASE);
+	}
+
+	@Override
+	public long copy(String toPath, String fromPath, long revision) throws SVNException {
+		return internalCopy(toPath, fromPath, SVNRevision.create(revision));
+	}
+
+	private long internalCopy(String toPath, String fromPath, SVNRevision rev) throws SVNException {
+		SVNCopySource[] sources = { new SVNCopySource(SVNRevision.BASE, rev, toFile(fromPath)) };
 		File dst = toFile(toPath);
 		clientManager().getCopyClient().doCopy(sources, dst, false, false, true);
+		return -1;
 	}
 
 	public void copyFromRemote(String toPath, String remoteFromPath, long revision) throws SVNException {

@@ -23,10 +23,50 @@ import org.tmatesoft.svn.core.SVNException;
 
 public abstract class FileSystem {
 
-	public abstract void mkdir(String path) throws SVNException;
+	/**
+	 * Creates a new directory in this {@link FileSystem}.
+	 * 
+	 * @param path
+	 *        Path of the new directory.
+	 * @return The commit number of the operation, if the {@link FileSystem} is version-controlled
+	 *         or <tt>-1</tt> if not.
+	 */
+	public abstract long mkdir(String path) throws SVNException;
 
-	public abstract void file(String path) throws SVNException, IOException;
+	/**
+	 * Creates a new file in this {@link FileSystem}.
+	 * 
+	 * @param path
+	 *        Path of the new file.
+	 * @return The commit number of the operation, if the {@link FileSystem} is version-controlled
+	 *         or <tt>-1</tt> if not.
+	 */
+	public abstract long file(String path) throws SVNException, IOException;
 
-	public abstract void copy(String toPath, String fromPath) throws SVNException;
+	/**
+	 * Creates a copy of the resource found under <tt>fromPath</tt> at <tt>toPath</tt>.
+	 * 
+	 * @param toPath
+	 *        Path of the new copy.
+	 * @param fromPath
+	 *        Path of the resource to copy.
+	 * @return The commit number of the operation, if the {@link FileSystem} is version-controlled
+	 *         or <tt>-1</tt> if not.
+	 */
+	public abstract long copy(String toPath, String fromPath) throws SVNException;
 
+	/**
+	 * Creates a copy of the resource found under <tt>fromPath</tt> in the given revision at
+	 * <tt>toPath</tt>.
+	 * 
+	 * @param toPath
+	 *        Path of the new copy.
+	 * @param fromPath
+	 *        Path of the resource to copy.
+	 * @param revision
+	 *        The revision of the source resource to copy
+	 * @return The commit number of the operation, if the {@link FileSystem} is version-controlled
+	 *         or <tt>-1</tt> if not.
+	 */
+	public abstract long copy(String toPath, String fromPath, long revision) throws SVNException;
 }

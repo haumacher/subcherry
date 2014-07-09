@@ -25,6 +25,7 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.Charset;
 
+import org.tmatesoft.svn.core.SVNCommitInfo;
 import org.tmatesoft.svn.core.SVNDepth;
 import org.tmatesoft.svn.core.SVNException;
 import org.tmatesoft.svn.core.SVNLogEntry;
@@ -89,20 +90,22 @@ public class Scenario extends FileSystem {
 	}
 
 	@Override
-	public void mkdir(String path) throws SVNException {
+	public long mkdir(String path) throws SVNException {
 		SVNURL url = getRepositoryUrl().appendPath(path, true);
-		commitClient().doMkDir(new SVNURL[] { url }, createMessage(), null, true);
+		SVNCommitInfo result = commitClient().doMkDir(new SVNURL[] { url }, createMessage(), null, true);
+		return result.getNewRevision();
 	}
 
 	@Override
-	public void file(String path) throws IOException, SVNException {
+	public long file(String path) throws IOException, SVNException {
 		File dir = File.createTempFile("upload", "");
 		dir.delete();
 		dir.mkdir();
 		File file = new File(dir, fileName(path));
 		fillFileContent(file);
 		SVNURL dstURL = getRepositoryUrl().appendPath(path, true);
-		commitClient().doImport(file, dstURL, createMessage(), null, false, true, SVNDepth.FILES);
+		SVNCommitInfo result = commitClient().doImport(file, dstURL, createMessage(), null, false, true, SVNDepth.FILES);
+		return result.getNewRevision();
 	}
 
 	static String fileName(String path) {
@@ -115,12 +118,22 @@ public class Scenario extends FileSystem {
 	}
 
 	@Override
-	public void copy(String toPath, String fromPath) throws SVNException {
+	public long copy(String toPath, String fromPath) throws SVNException {
+		return internalCopy(toPath, fromPath, SVNRevision.HEAD);
+	}
+
+	@Override
+	public long copy(String toPath, String fromPath, long revision) throws SVNException {
+		return internalCopy(toPath, fromPath, SVNRevision.create(revision));
+	}
+
+	private long internalCopy(String toPath, String fromPath, SVNRevision revision) throws SVNException {
 		SVNURL srcUrl = getRepositoryUrl().appendPath(fromPath, true);
-		SVNCopySource source = new SVNCopySource(SVNRevision.HEAD, SVNRevision.HEAD, srcUrl);
+		SVNCopySource source = new SVNCopySource(SVNRevision.HEAD, revision, srcUrl);
 		SVNCopySource[] sources = { source };
 		SVNURL dst = getRepositoryUrl().appendPath(toPath, true);
-		copyClient().doCopy(sources, dst, false, false, true, createMessage(), null);
+		SVNCommitInfo result = copyClient().doCopy(sources, dst, false, false, true, createMessage(), null);
+		return result.getNewRevision();
 	}
 
 	private SVNCopyClient copyClient() {
