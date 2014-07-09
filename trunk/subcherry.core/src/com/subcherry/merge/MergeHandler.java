@@ -688,6 +688,11 @@ public class MergeHandler extends Handler<MergeConfig> {
 			throws SVNException {
 		SvnMerge merge = operations().createMerge();
 		merge.setRecordOnly(recordOnly);
+		if (recordOnly) {
+			/* Set depth empty to avoid recording merge information on single files. Otherwise
+			 * property changes on files that are not touched by the merge. */
+			merge.setDepth(SVNDepth.EMPTY);
+		}
 		boolean revert = _config.getRevert();
 		SVNRevision startRevision = SVNRevision.create(revert ? revision : revision - 1);
 		SVNRevision endRevision = SVNRevision.create(revert ? revision - 1 : revision);
