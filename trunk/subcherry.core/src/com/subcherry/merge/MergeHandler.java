@@ -30,7 +30,6 @@ import org.tmatesoft.svn.core.wc2.SvnMerge;
 import org.tmatesoft.svn.core.wc2.SvnOperation;
 import org.tmatesoft.svn.core.wc2.SvnOperationFactory;
 import org.tmatesoft.svn.core.wc2.SvnRevisionRange;
-import org.tmatesoft.svn.core.wc2.SvnScheduleForRemoval;
 import org.tmatesoft.svn.core.wc2.SvnTarget;
 
 import com.subcherry.AdditionalRevision;
@@ -723,11 +722,8 @@ public class MergeHandler extends Handler<MergeConfig> {
 	private SvnOperation<?> createRemove(String resourceName) {
 		File targetFile = new File(_config.getWorkspaceRoot(), resourceName);
 
-		SvnScheduleForRemoval remove = operations().createScheduleForRemoval();
+		DeleteLocalFile remove = new DeleteLocalFile(operations());
 		remove.setSingleTarget(SvnTarget.fromFile(targetFile));
-		remove.setForce(true);
-		remove.setDeleteFiles(true);
-		remove.setDryRun(false);
 		return remove;
 	}
 
