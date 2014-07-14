@@ -402,18 +402,18 @@ public class Main {
 		// Order by their original revisions.
 		final List<Order> indices = new ArrayList<>();
 		int index = 0;
-		long mergedRev = 0;
 		for (CommitSet commitSet : commitSets) {
 			String mergedRevision = commitSet.getLeadCommit().getTicketMessage().getMergedRevision();
+			long mergedRev;
 			if (mergedRevision != null) {
 				mergedRev = Long.parseLong(mergedRevision);
+			} else {
+				// Use original revision instead. This allows replacing arbitrary changes during a
+				// rebase with original changes. This is useful to redo merges of certain change
+				// sets while keeping conflict resolutions from a previous rebase run.
+				mergedRev = commitSet.getLeadCommit().getRevision();
 			}
 			indices.add(new Order(mergedRev, index++, commitSet));
-		}
-
-		if (mergedRev == 0) {
-			// There are no merged changes.
-			return;
 		}
 
 		Collections.sort(indices, new Comparator<Order>() {
