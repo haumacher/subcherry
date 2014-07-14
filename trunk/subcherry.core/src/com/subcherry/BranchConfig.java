@@ -19,8 +19,25 @@ package com.subcherry;
 
 public interface BranchConfig {
 
+	/**
+	 * @return The name pattern matching the start part of an svn effected path that matches the
+	 *         branch of the path.
+	 */
 	String getBranchPattern();
 
+	/**
+	 * Setter for {@link #getBranchPattern()}.
+	 */
 	void setBranchPattern(String value);
+
+	/**
+	 * @return The name pattern matching the special branch "trunk" in the SVN system.
+	 */
+	String getTrunkPattern();
+
+	/**
+	 * Setter for {@link #getTrunkPattern()}.
+	 */
+	void setTrunkPattern(String value);
 
 }

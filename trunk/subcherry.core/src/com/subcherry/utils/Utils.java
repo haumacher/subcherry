@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.subcherry.Configuration;
 import com.subcherry.commit.MessageRewriter;
 
 /**
@@ -312,6 +313,18 @@ public class Utils {
 			wcPath = wcPath.substring(root.length() + 1);
 		}
 		return wcPath.replace(File.separatorChar, '/');
+	}
+
+	/**
+	 * Checks whether the merge is a merge to trunk. (By the name pattern given in the
+	 * configuration.)
+	 */
+	public static boolean mergeToTrunk(Configuration config) {
+		String targetBranch = config.getTargetBranch();
+		if (targetBranch.charAt(targetBranch.length() - 1) != SVN_SERVER_PATH_SEPARATOR) {
+			targetBranch += SVN_SERVER_PATH_SEPARATOR;
+		}
+		return targetBranch.matches(config.getTrunkPattern());
 	}
 
 }

@@ -29,7 +29,12 @@ public class PathParser {
 	private final Pattern _branchPattern;
 
 	public PathParser(BranchConfig config) {
-		_branchPattern = Pattern.compile("^(?:" + config.getBranchPattern() + ")");
+		String branchPattern = config.getBranchPattern();
+		String trunkPattern = config.getTrunkPattern();
+		if (!trunkPattern.isEmpty()) {
+			branchPattern += '|' + trunkPattern;
+		}
+		_branchPattern = Pattern.compile("^(?:" + branchPattern + ")");
 	}
 
 	public Path parsePath(SVNLogEntryPath pathEntry) {
