@@ -64,8 +64,6 @@ public class MergeHandler extends Handler<MergeConfig> {
 
 	private Set<String> _touchedResources;
 
-	private final ExplicitPathChangeSetBuilder _explicitPathChangeSetBuilder = new ExplicitPathChangeSetBuilder();
-
 	private final PathParser _paths;
 
 	public MergeHandler(SVNClientManager clientManager, MergeConfig config, PathParser paths, Set<String> modules) {
@@ -154,7 +152,16 @@ public class MergeHandler extends Handler<MergeConfig> {
 				continue;
 			}
 
-			final Path target = _paths.parsePath(svnPathEntry);
+			final Path originalTarget = _paths.parsePath(svnPathEntry);
+			final Path target;
+			String mappedResource = _config.getResourceMapping().get(originalTarget.getResource());
+			boolean isMapped = mappedResource != null;
+			if (isMapped) {
+				hasMoves = true;
+				target = new Path(originalTarget, mappedResource);
+			} else {
+				target = originalTarget;
+			}
 
 			if (!_modules.contains(target.getModule())) {
 				// The change happened in a module that is not among the merged modules, drop the
@@ -205,7 +212,7 @@ public class MergeHandler extends Handler<MergeConfig> {
 				}
 
 				// Plain add or modify, no source specified. Merge directly.
-				directMerge(logEntry.getRevision(), target);
+				directMerge(logEntry.getRevision(), originalTarget, target);
 				continue;
 			}
 
@@ -458,12 +465,12 @@ public class MergeHandler extends Handler<MergeConfig> {
 		return counter.getChanges();
 	}
 
-	private void directMerge(long revision, Path target) throws SVNException {
+	private void directMerge(long revision, Path source, Path target) throws SVNException {
 		String resource = target.getResource();
 		ChangeType changeType = target.getType();
 
 		if (changeType == ChangeType.ADDED || changeType == ChangeType.REPLACED) {
-			if (target.getPathEntry().getKind() == SVNNodeKind.DIR) {
+			if (target.getKind() == SVNNodeKind.DIR) {
 				_crossMergedDirectories.add(resource);
 			}
 		}
@@ -471,7 +478,20 @@ public class MergeHandler extends Handler<MergeConfig> {
 		// Prevent merging the whole module (if, e.g. merge info is merged for the module),
 		// since this would produce conflicts with the explicitly merged moves and copies.
 		if (!_modules.contains(resource) && existsWhenMerged(resource)) {
-			_explicitPathChangeSetBuilder.buildMerge(revision, target, false, true);
+			buildResourceMerge(revision, source, target, false, true);
+		}
+	}
+
+	private void buildResourceMerge(long revision, Path src, Path target, boolean recordOnly, boolean ignoreAncestry)
+			throws SVNException {
+		String urlPrefix = createUrlPrefix(src.getBranch());
+		if (src.getKind() == SVNNodeKind.DIR && src.getType() == ChangeType.MODIFIED) {
+			SvnMerge merge =
+				createModification(revision, src.getResource(), target.getResource(), urlPrefix, recordOnly, ignoreAncestry);
+			merge.setDepth(SVNDepth.EMPTY);
+			addOperation(target.getResource(), merge);
+		} else {
+			addMergeOperations(revision, src, target.getResource(), urlPrefix, recordOnly, ignoreAncestry);
 		}
 	}
 
@@ -606,32 +626,32 @@ public class MergeHandler extends Handler<MergeConfig> {
 		return _config.getSvnURL() + branch;
 	}
 
-	void addMergeOperations(long revision, Path path, String resourceName, String urlPrefix,
-			boolean recordOnly, boolean ignoreAncestry) throws SVNException {
-		switch (path.getType()) {
+	void addMergeOperations(long revision, Path srcPath, String targetResource, String urlPrefix, boolean recordOnly,
+			boolean ignoreAncestry) throws SVNException {
+		switch (srcPath.getType()) {
 			case DELETED: {
 				if (!recordOnly) {
-					addRemove(resourceName);
+					addRemove(targetResource);
 				}
 				break;
 			}
 			case ADDED: {
 				if (!recordOnly) {
-					addRemoteAdd(revision, path, resourceName);
+					addRemoteAdd(revision, srcPath, targetResource);
 				}
-				addModification(revision, resourceName, urlPrefix, recordOnly, ignoreAncestry);
+				addModification(revision, srcPath.getResource(), targetResource, urlPrefix, recordOnly, ignoreAncestry);
 				break;
 			}
 			case REPLACED: {
 				if (!recordOnly) {
-					addRemove(resourceName);
-					addRemoteAdd(revision, path, resourceName);
+					addRemove(targetResource);
+					addRemoteAdd(revision, srcPath, targetResource);
 				}
-				addModification(revision, resourceName, urlPrefix, recordOnly, ignoreAncestry);
+				addModification(revision, srcPath.getResource(), targetResource, urlPrefix, recordOnly, ignoreAncestry);
 				break;
 			}
 			case MODIFIED: {
-				addModification(revision, resourceName, urlPrefix, recordOnly, ignoreAncestry);
+				addModification(revision, srcPath.getResource(), targetResource, urlPrefix, recordOnly, ignoreAncestry);
 				break;
 			}
 		}
@@ -646,23 +666,23 @@ public class MergeHandler extends Handler<MergeConfig> {
 		_touchedResources.add(resource);
 	}
 
-	private void addRemoteAdd(long revision, Path path, String targetResource) throws SVNException {
-		addOperation(targetResource, createRemoteAdd(revision, path, targetResource));
+	private void addRemoteAdd(long revision, Path srcPath, String targetResource) throws SVNException {
+		addOperation(targetResource, createRemoteAdd(revision, srcPath, targetResource));
 		_virtualFs.add(targetResource);
 	}
 
-	private SvnOperation<?> createRemoteAdd(long srcRevision, Path path, String targetResource) throws SVNException {
+	private SvnOperation<?> createRemoteAdd(long srcRevision, Path srcPath, String targetResource) throws SVNException {
 		SVNRevision revision;
 		SvnCopySource copySource;
-		if (path.getCopyPath() == null) {
+		if (srcPath.getCopyPath() == null) {
 			revision = SVNRevision.create(srcRevision);
 			copySource = SvnCopySource.create(
-				SvnTarget.fromURL(svnUrl(_config.getSvnURL() + path.getPath()), revision),
+				SvnTarget.fromURL(svnUrl(_config.getSvnURL() + srcPath.getPath()), revision),
 				revision);
 		} else {
-			revision = SVNRevision.create(path.getCopyRevision());
+			revision = SVNRevision.create(srcPath.getCopyRevision());
 			copySource = SvnCopySource.create(
-				SvnTarget.fromURL(svnUrl(_config.getSvnURL() + path.getCopyPath()), revision),
+				SvnTarget.fromURL(svnUrl(_config.getSvnURL() + srcPath.getCopyPath()), revision),
 				revision);
 		}
 
@@ -678,13 +698,18 @@ public class MergeHandler extends Handler<MergeConfig> {
 		return copy;
 	}
 
-	void addModification(long revision, String targetResource, String urlPrefix, boolean recordOnly, boolean ignoreAncestry)
+	void addModification(long revision, String resource, String urlPrefix, boolean recordOnly, boolean ignoreAncestry)
 			throws SVNException {
-		addOperation(targetResource, createModification(revision, targetResource, urlPrefix, recordOnly, ignoreAncestry));
+		addOperation(resource, createModification(revision, resource, resource, urlPrefix, recordOnly, ignoreAncestry));
 	}
 
-	SvnMerge createModification(long revision, String resourceName, String urlPrefix, boolean recordOnly, boolean ignoreAncestry)
+	void addModification(long revision, String srcResource, String targetResource, String urlPrefix, boolean recordOnly, boolean ignoreAncestry)
 			throws SVNException {
+		addOperation(targetResource, createModification(revision, srcResource, targetResource, urlPrefix, recordOnly, ignoreAncestry));
+	}
+	
+	SvnMerge createModification(long revision, String srcResourceName, String targetResourceName, String urlPrefix,
+			boolean recordOnly, boolean ignoreAncestry) throws SVNException {
 		SvnMerge merge = operations().createMerge();
 		merge.setRecordOnly(recordOnly);
 		if (recordOnly) {
@@ -700,11 +725,11 @@ public class MergeHandler extends Handler<MergeConfig> {
 		/* Must allow as otherwise the whole workspace is checked for revisions which costs much
 		 * time */
 		merge.setAllowMixedRevisions(true);
-		File targetFile = new File(_config.getWorkspaceRoot(), resourceName);
+		File targetFile = new File(_config.getWorkspaceRoot(), targetResourceName);
 		SvnTarget target = SvnTarget.fromFile(targetFile);
 		merge.setSingleTarget(target);
 		
-		SVNURL sourceUrl = svnUrl(urlPrefix + resourceName);
+		SVNURL sourceUrl = svnUrl(urlPrefix + srcResourceName);
 		SvnTarget source = SvnTarget.fromURL(sourceUrl, endRevision);
 		merge.setSource(source, false);
 		SvnRevisionRange range = SvnRevisionRange.create(startRevision, endRevision);
@@ -778,22 +803,6 @@ public class MergeHandler extends Handler<MergeConfig> {
 
 			String urlPrefix = createUrlPrefix(path.getBranch());
 			addMergeOperations(revision, path, path.getResource(), urlPrefix, recordOnly, true);
-		}
-	}
-
-	class ExplicitPathChangeSetBuilder extends MergeBuilder {
-		@Override
-		public void buildMerge(long revision, Path path, boolean recordOnly, boolean ignoreAncestry) throws SVNException {
-			String urlPrefix = createUrlPrefix(path.getBranch());
-			if (path.getPathEntry().getKind() == SVNNodeKind.DIR
-				&& path.getPathEntry().getType() == SVNLogEntryPath.TYPE_MODIFIED) {
-				SvnMerge merge =
-					createModification(revision, path.getResource(), urlPrefix, recordOnly, ignoreAncestry);
-				merge.setDepth(SVNDepth.EMPTY);
-				addOperation(path.getResource(), merge);
-			} else {
-				addMergeOperations(revision, path, path.getResource(), urlPrefix, recordOnly, ignoreAncestry);
-			}
 		}
 	}
 

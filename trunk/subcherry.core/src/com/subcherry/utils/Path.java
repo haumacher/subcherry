@@ -43,6 +43,16 @@ public class Path {
 		_resource = resource;
 	}
 
+	public Path(Path orig, String resource) {
+		_pathEntry = orig.getPathEntry();
+		_copyPath = orig.getCopyPath();
+
+		_pathName = orig.getBranch() + resource;
+		_branch = orig.getBranch();
+		_module = PathParser.getModule(resource);
+		_resource = resource;
+	}
+
 	public String getPath() {
 		return _pathName;
 	}

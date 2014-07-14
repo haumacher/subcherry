@@ -46,4 +46,16 @@ public interface MergeConfig extends WorkspaceConfig, RepositoryConfig {
 
 	@ValueParser(PatternParser.class)
 	Pattern getExcludePaths();
+
+	/**
+	 * Mapping of resource names.
+	 * 
+	 * <p>
+	 * The mapping is applied to resources in the source branch when deciding about a merge target
+	 * resource. If a source resource is contained as key in the mapping, the merge is applied to
+	 * the resource given as value.
+	 * </p>
+	 */
+	@ValueParser(MappingParser.class)
+	Map<String, String> getResourceMapping();
 }
