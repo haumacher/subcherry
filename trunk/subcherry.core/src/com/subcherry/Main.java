@@ -29,11 +29,14 @@ import org.tmatesoft.svn.core.SVNURL;
 import org.tmatesoft.svn.core.auth.ISVNAuthenticationManager;
 import org.tmatesoft.svn.core.internal.wc.DefaultSVNOptions;
 import org.tmatesoft.svn.core.internal.wc.SVNDiffConflictChoiceStyle;
+import org.tmatesoft.svn.core.internal.wc17.SVNWCContext;
+import org.tmatesoft.svn.core.wc.DefaultSVNRepositoryPool;
 import org.tmatesoft.svn.core.wc.ISVNMerger;
 import org.tmatesoft.svn.core.wc.SVNClientManager;
 import org.tmatesoft.svn.core.wc.SVNLogClient;
 import org.tmatesoft.svn.core.wc.SVNRevision;
 import org.tmatesoft.svn.core.wc.SVNWCUtil;
+import org.tmatesoft.svn.core.wc2.SvnOperationFactory;
 
 import com.subcherry.commit.Commit;
 import com.subcherry.commit.CommitHandler;
@@ -535,7 +538,11 @@ public class Main {
 		};
 		ISVNAuthenticationManager authManager = SVNWCUtil.createDefaultAuthenticationManager(svnCredentials.getUser(),
 				svnCredentials.getPasswd());
-		return SVNClientManager.newInstance(options, authManager);
+		SVNWCContext svnwcContext = new SVNWCContext(options, null);
+		SvnOperationFactory svnOperationFactory = new SvnOperationFactory(svnwcContext);
+		svnOperationFactory.setRepositoryPool(new DefaultSVNRepositoryPool(authManager, options));
+		svnOperationFactory.setAutoDisposeRepositoryPool(true);
+		return SVNClientManager.newInstance(svnOperationFactory);
 	}
 
 }
