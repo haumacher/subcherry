@@ -44,8 +44,18 @@ public class OperationToString {
 		if (op instanceof LocalMkDir) {
 			return toStringLocalMkDir((LocalMkDir) op);
 		}
+		if (op instanceof DeleteLocalFile) {
+			return toStringDeleteLocalFile((DeleteLocalFile) op);
+		}
 	
 		return op.toString();
+	}
+
+	private static String toStringDeleteLocalFile(DeleteLocalFile op) {
+		StringBuilder buffer = new StringBuilder();
+		buffer.append("svn delete");
+		appendTargets(buffer, op.getTargets());
+		return buffer.toString();
 	}
 
 	public static String toStringRemove(SvnScheduleForRemoval remove) {

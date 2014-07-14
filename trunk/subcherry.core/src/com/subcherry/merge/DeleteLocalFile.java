@@ -89,10 +89,5 @@ public class DeleteLocalFile extends SvnOperation<Void> {
 		return getOperationalWorkingCopy();
 	}
 
-	@Override
-	public String toString() {
-		return "subcherry: svn delete " + getFirstTarget().getPathOrUrlString();
-	}
-
 }
 
