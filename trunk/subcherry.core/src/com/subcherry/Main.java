@@ -98,8 +98,8 @@ public class Main {
 	}
 
 	public static void doMerge(LoginCredential tracCredentials) throws SVNException, IOException {
-		SVNRevision startRevision = config().getRevert() ? getEndRevision() : getStartRevision();
-		SVNRevision endRevision = config().getRevert() ? getStartRevision() : getEndRevision();
+		SVNRevision startRevision = getStartRevision();
+		SVNRevision endRevision = getEndRevision();
 		SVNRevision pegRevision = getPegRevision();
 		SVNClientManager clientManager = newSVNClientManager();
 		SVNLogClient logClient = clientManager.getLogClient();
@@ -166,17 +166,20 @@ public class Main {
 		}
 
 		List<SVNLogEntry> mergedLogEntries = logEntryMatcher.getEntries();
-		if (additionalRevisionsFromOtherBranches) {
+		if (additionalRevisionsFromOtherBranches || config().getRevert()) {
+			int reverse = config().getRevert() ? -1 : 1;
+			final int smaller = reverse * -1;
+			final int greater = reverse * 1;
 			Collections.sort(mergedLogEntries, new Comparator<SVNLogEntry>() {
 				@Override
 				public int compare(SVNLogEntry e1, SVNLogEntry e2) {
 					long r1 = e1.getRevision();
 					long r2 = e2.getRevision();
 					if (r1 < r2) {
-						return -1;
+						return smaller;
 					}
 					if (r1 > r2) {
-						return 1;
+						return greater;
 					}
 					return 0;
 				}
