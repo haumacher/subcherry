@@ -96,6 +96,9 @@ public class PortingTickets {
 		if (_config.getPreview()) {
 			return PortType.PREVIEW;
 		}
+		if (_config.getReintegrate()) {
+			return PortType.REINTEGRATE;
+		}
 		return PortType.PORT;
 	}
 

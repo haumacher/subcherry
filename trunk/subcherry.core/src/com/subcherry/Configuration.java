@@ -100,6 +100,10 @@ public interface Configuration extends MergeConfig, CommitConfig, BranchConfig {
 
 	void setPreview(boolean value);
 	
+	boolean getReintegrate();
+
+	void setReintegrate(boolean value);
+
 	String getPortMessage();
 
 	void setPortMessage(String value);
