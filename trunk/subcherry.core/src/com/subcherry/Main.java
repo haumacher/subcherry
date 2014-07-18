@@ -187,15 +187,16 @@ public class Main {
 		}
 
 		LOG.log(Level.INFO, "Reading target history.");
-		HistroyBuilder historyBuilder = new HistroyBuilder(getStartRevision().getNumber());
-		String[] targetPaths = getLogPaths(targetBranch);
-		String[] allPaths = concat(sourcePaths, targetPaths);
-		// For history reconstruction, the history must always be read in ascending revision order.
-		logReader.setStartRevision(getStartRevision());
-		logReader.setEndRevision(getEndRevision());
-		logReader.readLog(allPaths, historyBuilder);
 		
 		if (!config().getSkipDependencies()) {
+			HistroyBuilder historyBuilder = new HistroyBuilder(getStartRevision().getNumber());
+			String[] targetPaths = getLogPaths(targetBranch);
+			String[] allPaths = concat(sourcePaths, targetPaths);
+			// For history reconstruction, the history must always be read in ascending revision
+			// order.
+			logReader.setStartRevision(getStartRevision());
+			logReader.setEndRevision(getEndRevision());
+			logReader.readLog(allPaths, historyBuilder);
 			analyzeDependencies(historyBuilder, sourceBranch, targetBranch, trac, mergedLogEntries);
 		}
 
