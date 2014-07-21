@@ -31,7 +31,7 @@ public class PathParser {
 	public PathParser(BranchConfig config) {
 		String branchPattern = config.getBranchPattern();
 		String trunkPattern = config.getTrunkPattern();
-		if (!trunkPattern.isEmpty()) {
+		if (trunkPattern != null && !trunkPattern.isEmpty()) {
 			branchPattern += '|' + trunkPattern;
 		}
 		_branchPattern = Pattern.compile("^(?:" + branchPattern + ")");
