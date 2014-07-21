@@ -30,11 +30,14 @@ import org.tmatesoft.svn.core.SVNDepth;
 import org.tmatesoft.svn.core.SVNException;
 import org.tmatesoft.svn.core.SVNLogEntry;
 import org.tmatesoft.svn.core.SVNURL;
+import org.tmatesoft.svn.core.internal.wc.DefaultSVNOptions;
+import org.tmatesoft.svn.core.internal.wc17.SVNWCContext;
 import org.tmatesoft.svn.core.wc.SVNClientManager;
 import org.tmatesoft.svn.core.wc.SVNCommitClient;
 import org.tmatesoft.svn.core.wc.SVNCopyClient;
 import org.tmatesoft.svn.core.wc.SVNCopySource;
 import org.tmatesoft.svn.core.wc.SVNRevision;
+import org.tmatesoft.svn.core.wc2.SvnOperationFactory;
 
 import com.subcherry.merge.LastLogEntry;
 
@@ -54,7 +57,9 @@ public class Scenario extends FileSystem {
 		repositoryRoot.delete();
 		repositoryRoot.mkdir();
 
-		SVNClientManager clientManager = SVNClientManager.newInstance();
+		SVNWCContext svnwcContext = new SVNWCContext(new DefaultSVNOptions(), null);
+		SvnOperationFactory svnOperationFactory = new SvnOperationFactory(svnwcContext);
+		SVNClientManager clientManager = SVNClientManager.newInstance(svnOperationFactory);
 		SVNURL repositoryUrl =
 			clientManager.getAdminClient().doCreateRepository(repositoryRoot, "uuid-" + (_scenarioId++), true, false);
 
