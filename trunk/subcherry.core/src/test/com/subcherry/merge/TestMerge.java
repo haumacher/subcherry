@@ -223,6 +223,63 @@ public class TestMerge extends TestCase {
 		assertCopyFrom(mergedEntry, "/branches/branch2/module2/bar", "/branches/branch2/module1/bar");
 	}
 
+	public void testMoveInRenamedFolder() throws IOException, SVNException {
+		Scenario s = moduleScenario();
+
+		// Create scenario base.
+		WC wc1 = s.wc("/branches/branch1");
+		wc1.mkdir("module1/oldfolder");
+		wc1.file("module1/oldfolder/foo");
+		wc1.file("module1/oldfolder/bar");
+		wc1.commit();
+
+		// Create target branch.
+		s.copy("/branches/branch2", "/branches/branch1");
+
+		// Move folder.
+		wc1.copy("module2/newfolder", "module1/oldfolder");
+		wc1.delete("module1/oldfolder");
+		wc1.commit();
+
+		// Create revision to merge, rename foo to aaa and bar to zzz.
+		wc1.copy("module2/newfolder/aaa", "module2/newfolder/foo");
+		wc1.delete("module2/newfolder/foo");
+		wc1.copy("module2/newfolder/zzz", "module2/newfolder/bar");
+		wc1.delete("module2/newfolder/bar");
+
+		wc1.update("module2/newfolder/zzz");
+		wc1.update("module2/newfolder/aaa");
+		String origZzz = wc1.load("module2/newfolder/zzz");
+		String origAaa = wc1.load("module2/newfolder/aaa");
+		long origRevision = wc1.commit();
+
+		SVNLogEntry mergedEntry =
+			doMerge(s, origRevision, Collections.singletonMap("module2/newfolder/", "module1/oldfolder/"));
+
+		Map<String, SVNLogEntryPath> changedPaths = mergedEntry.getChangedPaths();
+		// Merge info has been recorded to original module.
+		assertTrue(changedPaths.get("/branches/branch2/module2") != null);
+		// No changes happened to module 1 in merged change set.
+		assertTrue(changedPaths.get("/branches/branch2/module1") == null);
+
+		// Changes have been applied.
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_DELETED, "/branches/branch2/module1/oldfolder/foo");
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_DELETED, "/branches/branch2/module1/oldfolder/bar");
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_ADDED, "/branches/branch2/module1/oldfolder/aaa");
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_ADDED, "/branches/branch2/module1/oldfolder/zzz");
+
+		// Intra-branch copy has been created.
+		assertCopyFrom(mergedEntry, "/branches/branch2/module1/oldfolder/foo", "/branches/branch2/module1/oldfolder/aaa");
+		assertCopyFrom(mergedEntry, "/branches/branch2/module1/oldfolder/bar", "/branches/branch2/module1/oldfolder/zzz");
+
+		WC wc2 = s.wc("/branches/branch2");
+		String mergedZzz = wc2.load("module1/oldfolder/zzz");
+		String mergedAaa = wc2.load("module1/oldfolder/aaa");
+
+		assertEquals(origAaa, mergedAaa);
+		assertEquals(origZzz, mergedZzz);
+	}
+
 	public void testMoveWithinMovedFolder() throws IOException, SVNException {
 		Scenario s = moduleScenario();
 
@@ -655,10 +712,15 @@ public class TestMerge extends TestCase {
 	}
 
 	private SVNLogEntry doMerge(Scenario s, long revision) throws IOException, SVNException {
+		return doMerge(s, revision, Collections.<String, String> emptyMap());
+	}
+
+	private SVNLogEntry doMerge(Scenario s, long revision, Map<String, String> resourceMapping)
+			throws IOException, SVNException {
 		WC wc2 = s.wc("/branches/branch2");
 		SVNLogEntry entry = s.log(revision);
 
-		Merge merge = createMerge(s, wc2, entry);
+		Merge merge = createMerge(s, wc2, entry, resourceMapping);
 		doMerge(s, wc2, merge);
 
 		Commit commit = createCommit(s, wc2, entry, merge.getTouchedResources());
@@ -691,10 +753,16 @@ public class TestMerge extends TestCase {
 	}
 
 	private Merge createMerge(Scenario s, WC wc, SVNLogEntry entry) throws SVNException {
+		return createMerge(s, wc, entry, Collections.<String, String> emptyMap());
+	}
+
+	private Merge createMerge(Scenario s, WC wc, SVNLogEntry entry, Map<String, String> resourceMapping)
+			throws SVNException {
 		MergeConfig mergeConfig = ValueFactory.newInstance(MergeConfig.class);
 		mergeConfig.setSvnURL(s.getRepositoryUrl().toDecodedString());
 		mergeConfig.setSemanticMoves(true);
 		mergeConfig.setWorkspaceRoot(wc.getDirectory());
+		mergeConfig.getResourceMapping().putAll(resourceMapping);
 		BranchConfig branchConfig = ValueFactory.newInstance(BranchConfig.class);
 		branchConfig.setBranchPattern("/branches/[^/]+/");
 		MergeHandler handler =
