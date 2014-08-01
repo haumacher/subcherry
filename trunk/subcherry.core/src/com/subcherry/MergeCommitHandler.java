@@ -228,6 +228,7 @@ public class MergeCommitHandler {
 		String includeCommand = "include: ";
 		String commitCommand = "commit: ";
 		String joinCommand = "join: ";
+		String reloadCommand = "reload";
 		try {
 			while (true) {
 				System.out.println(commitCommand + encode(commit.getCommitMessage()));
@@ -239,7 +240,8 @@ public class MergeCommitHandler {
 				"'" + excludeCommand + "<path to exclude>', to exclude a certain path from commit, " + 
 				"'" + includeCommand + "<path to include>', to include a certain path from commit, " + 
 				"'" + skipCommand + "' to skip this revision or " + 
-				"'" + joinCommand + "<revision>' to join a following revision with the current commit or " + 
+				"'" + joinCommand + "<revision>' to join a following revision with the current commit, " + 
+				"'" + reloadCommand + "' to reload the current settings or " + 
 				"'" + stopCommand + "' to stop the tool!");
 				String input = Utils.SYSTEM_IN.readLine();
 				if (input.startsWith(commitCommand)) {
@@ -289,6 +291,10 @@ public class MergeCommitHandler {
 				}
 				if (reapplyCommand.equals(input)) {
 					return InputResult.REAPPLY;
+				}
+				if (reloadCommand.equals(input)) {
+					Globals.reloadConfig();
+					continue;
 				}
 				if (input.startsWith(joinCommand)) {
 					long joinedRevision = Long.parseLong(input.substring(joinCommand.length()));

@@ -52,6 +52,10 @@ public class Globals {
 		}
 	}
 
+	public static void reloadConfig() throws IOException {
+		PropertiesUtil.load("conf/configuration.properties", _config);
+	}
+
 	private static void setConfig(Configuration config) {
 		_config = config;
 	}
