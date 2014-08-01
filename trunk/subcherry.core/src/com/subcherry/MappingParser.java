@@ -54,7 +54,7 @@ public class MappingParser extends ObjectParser<Map<String, String>> {
 			if (keyValue.length != 2) {
 				throw new IllegalArgumentException("Invalid mapping specification: " + entry);
 			}
-			result.put(keyValue[0], keyValue[1]);
+			result.put(keyValue[0].trim(), keyValue[1].trim());
 		}
 		return result;
 	}
