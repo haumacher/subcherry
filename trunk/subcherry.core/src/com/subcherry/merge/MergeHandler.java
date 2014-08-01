@@ -66,12 +66,15 @@ public class MergeHandler extends Handler<MergeConfig> {
 
 	private final PathParser _paths;
 
+	private ResourceMapping _mapping;
+
 	public MergeHandler(SVNClientManager clientManager, MergeConfig config, PathParser paths, Set<String> modules) {
 		super(config);
 		_clientManager = clientManager;
 		_paths = paths;
 		_modules = modules;
 		_virtualFs = new VirtualFS();
+		_mapping = ResourceMapping.create(config.getResourceMapping());
 	}
 
 	private SvnOperationFactory operations() {
@@ -126,6 +129,10 @@ public class MergeHandler extends Handler<MergeConfig> {
 				// There is potentially a change that must be treated especially.
 				return false;
 			}
+
+			if (map(_paths.parsePath(pathEntry)) != null) {
+				return false;
+			}
 		}
 		return true;
 	}
@@ -154,7 +161,7 @@ public class MergeHandler extends Handler<MergeConfig> {
 
 			final Path originalTarget = _paths.parsePath(svnPathEntry);
 			final Path target;
-			String mappedResource = _config.getResourceMapping().get(originalTarget.getResource());
+			String mappedResource = map(originalTarget);
 			boolean isMapped = mappedResource != null;
 			if (isMapped) {
 				hasMoves = true;
@@ -359,6 +366,10 @@ public class MergeHandler extends Handler<MergeConfig> {
 			_crossMergedDirectories.clear();
 		}
 		return hasMoves;
+	}
+
+	private String map(final Path originalTarget) {
+		return _mapping.map(originalTarget.getResource());
 	}
 
 	private static boolean isSubPath(String subPath, String parentPath) {
