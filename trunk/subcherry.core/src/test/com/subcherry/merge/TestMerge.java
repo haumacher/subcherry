@@ -37,6 +37,7 @@ import org.tmatesoft.svn.core.SVNCommitInfo;
 import org.tmatesoft.svn.core.SVNException;
 import org.tmatesoft.svn.core.SVNLogEntry;
 import org.tmatesoft.svn.core.SVNLogEntryPath;
+import org.tmatesoft.svn.core.internal.wc.SVNFileUtil;
 import org.tmatesoft.svn.core.wc.SVNConflictDescription;
 
 import test.com.subcherry.scenario.Scenario;
@@ -67,6 +68,13 @@ public class TestMerge extends TestCase {
 	private static final List<String> MERGED_MODULES = Arrays.asList("module1", "module2");
 
 	private static final String NL = System.getProperty("line.separator");
+
+	@Override
+	protected void setUp() throws Exception {
+		super.setUp();
+
+		SVNFileUtil.setSleepForTimestamp(false);
+	}
 
 	public void testCrossBranchCopyWithExistingResourceWithSameName() throws IOException, SVNException {
 		Scenario s = moduleScenario();

@@ -180,4 +180,9 @@ public interface Configuration extends MergeConfig, CommitConfig, BranchConfig {
 	 */
 	boolean getAllChanges();
 
+	/**
+	 * Whether SVN should not ensure the uniqueness of file time stamps in update operations.
+	 */
+	boolean getSkipWaitForTimestamp();
+
 }

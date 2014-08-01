@@ -29,6 +29,7 @@ import org.tmatesoft.svn.core.SVNURL;
 import org.tmatesoft.svn.core.auth.ISVNAuthenticationManager;
 import org.tmatesoft.svn.core.internal.wc.DefaultSVNOptions;
 import org.tmatesoft.svn.core.internal.wc.SVNDiffConflictChoiceStyle;
+import org.tmatesoft.svn.core.internal.wc.SVNFileUtil;
 import org.tmatesoft.svn.core.internal.wc17.SVNWCContext;
 import org.tmatesoft.svn.core.wc.DefaultSVNRepositoryPool;
 import org.tmatesoft.svn.core.wc.ISVNMerger;
@@ -128,6 +129,10 @@ public class Main {
 		SVNLogEntryMatcher logEntryMatcher = newLogEntryMatcher(trac, portingTickets);
 		CommitHandler commitHandler = newCommitHandler(paths, messageRewriter);
 		SVNURL url = SVNURL.parseURIDecoded(config().getSvnURL());
+
+		if (config().getSkipWaitForTimestamp()) {
+			SVNFileUtil.setSleepForTimestamp(false);
+		}
 
 		LOG.log(Level.INFO, "Reading source history.");
 		LogReader logReader = new LogReader(logClient, url);
