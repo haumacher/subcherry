@@ -279,6 +279,43 @@ public class TestMerge extends TestCase {
 		assertEquals(origAaa, mergedAaa);
 		assertEquals(origZzz, mergedZzz);
 	}
+	
+	public void testCreateInRenamedFolder() throws IOException, SVNException {
+		Scenario s = moduleScenario();
+		
+		// Create scenario base.
+		WC wc1 = s.wc("/branches/branch1");
+		wc1.mkdir("module1/oldfolder");
+		wc1.file("module1/oldfolder/foo");
+		wc1.commit();
+		
+		// Create target branch.
+		s.copy("/branches/branch2", "/branches/branch1");
+		
+		// Move folder.
+		wc1.copy("module2/newfolder", "module1/oldfolder");
+		wc1.delete("module1/oldfolder");
+		wc1.commit();
+		
+		// Create revision to merge.
+		wc1.file("module2/newfolder/bar");
+		long origRevision = wc1.commit();
+		
+		SVNLogEntry mergedEntry =
+			doMerge(s, origRevision, Collections.singletonMap("module2/newfolder/", "/module1/oldfolder/"));
+		
+		Map<String, SVNLogEntryPath> changedPaths = mergedEntry.getChangedPaths();
+		// Merge info has been recorded to original module.
+		assertTrue(changedPaths.get("/branches/branch2/module2") != null);
+		// No changes happened to module 1 in merged change set.
+		assertTrue(changedPaths.get("/branches/branch2/module1") == null);
+		
+		// Changes have been applied.
+		assertType(mergedEntry, SVNLogEntryPath.TYPE_ADDED, "/branches/branch2/module1/oldfolder/bar");
+		
+		// Cross-branch copy has been created.
+		assertCopyFrom(mergedEntry, "/branches/branch1/module2/newfolder/bar", "/branches/branch2/module1/oldfolder/bar");
+	}
 
 	public void testMoveWithinMovedFolder() throws IOException, SVNException {
 		Scenario s = moduleScenario();

@@ -42,10 +42,18 @@ public abstract class ResourceMapping {
 
 		public RegexpResourceMapping(Map<String, String> patternReplacements) {
 			for (Entry<String, String> entry : patternReplacements.entrySet()) {
-				String key = entry.getKey();
+				String key = stripPreceedingSlash(entry.getKey());
+				String value = stripPreceedingSlash(entry.getValue());
 
-				_replacers.add(new Replacer(Pattern.compile(key), entry.getValue()));
+				_replacers.add(new Replacer(Pattern.compile(key), value));
 			}
+		}
+
+		private String stripPreceedingSlash(String resource) {
+			if (resource.startsWith("/")) {
+				resource = resource.substring(1);
+			}
+			return resource;
 		}
 
 		@Override
