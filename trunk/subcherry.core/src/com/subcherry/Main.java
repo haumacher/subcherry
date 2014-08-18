@@ -56,6 +56,7 @@ import com.subcherry.trac.TracTicket;
 import com.subcherry.utils.Log;
 import com.subcherry.utils.PathParser;
 import com.subcherry.utils.Utils;
+import com.subcherry.utils.Utils.IllegalMessageFormat;
 
 import de.haumacher.common.config.PropertiesUtil;
 
@@ -458,7 +459,14 @@ public class Main {
 	private static List<CommitSet> getCommitSets(CommitHandler commitHandler, List<SVNLogEntry> logEntries) {
 		ArrayList<CommitSet> result = new ArrayList<CommitSet>(logEntries.size());
 		for (SVNLogEntry logEntry : logEntries) {
-			result.add(new CommitSet(logEntry, commitHandler.parseCommit(logEntry)));
+			Commit commit;
+			try {
+				commit = commitHandler.parseCommit(logEntry);
+			} catch (IllegalMessageFormat ex) {
+				LOG.log(Level.WARNING, "Unable to parse commit for log entry:" + logEntry, ex);
+				continue;
+			}
+			result.add(new CommitSet(logEntry, commit));
 		}
 		return result;
 	}

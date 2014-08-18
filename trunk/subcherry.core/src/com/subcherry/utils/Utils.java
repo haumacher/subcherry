@@ -18,6 +18,31 @@ import com.subcherry.commit.MessageRewriter;
  */
 public class Utils {
 
+	/**
+	 * {@link Exception} that is thrown when the commit message has illegal format.
+	 */
+	public static class IllegalMessageFormat extends Exception {
+
+		/**
+		 * Creates a new {@link IllegalMessageFormat}.
+		 * 
+		 * @see Exception#Exception(String, Throwable)
+		 */
+		public IllegalMessageFormat(String message, Throwable cause) {
+			super(message, cause);
+		}
+
+		/**
+		 * Creates a new {@link IllegalMessageFormat}.
+		 * 
+		 * @see Exception#Exception(String)
+		 */
+		public IllegalMessageFormat(String message) {
+			super(message);
+		}
+
+	}
+
 	public static class TicketMessage {
 		private static final MessageRewriter NO_REWRITE = null;
 
@@ -34,18 +59,19 @@ public class Utils {
 
 		private final long _leadRevision;
 		
-		public TicketMessage(String commitMessage) {
+		public TicketMessage(String commitMessage) throws IllegalMessageFormat {
 			this(0, commitMessage, NO_REWRITE);
 		}
 
-		public TicketMessage(long originalRevision, String commitMessage, MessageRewriter messageRewriter) {
+		public TicketMessage(long originalRevision, String commitMessage, MessageRewriter messageRewriter)
+				throws IllegalMessageFormat {
 			_originalRevision = originalRevision;
 			_commitMessage = commitMessage;
 			_messageRewriter = messageRewriter;
 
 			matcher = TICKET_PATTERN.matcher(commitMessage);
 			if (!matcher.matches()) {
-				throw new IllegalArgumentException("Message of [" + originalRevision + "] '" + commitMessage
+				throw new IllegalMessageFormat("Message of [" + originalRevision + "] '" + commitMessage
 					+ "' has illegal format.");
 			}
 			ticketNumber = getTicketNumber(matcher);

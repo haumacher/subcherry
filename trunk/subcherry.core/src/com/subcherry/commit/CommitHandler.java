@@ -5,6 +5,7 @@ import org.tmatesoft.svn.core.SVNLogEntry;
 import com.subcherry.CommitConfig;
 import com.subcherry.Configuration;
 import com.subcherry.merge.Handler;
+import com.subcherry.utils.Utils.IllegalMessageFormat;
 import com.subcherry.utils.Utils.TicketMessage;
 
 /**
@@ -24,7 +25,7 @@ public class CommitHandler extends Handler<CommitConfig> {
 		_messageRewriter = messageRewriter;
 	}
 
-	public Commit parseCommit(SVNLogEntry logEntry) {
+	public Commit parseCommit(SVNLogEntry logEntry) throws IllegalMessageFormat {
 		TicketMessage ticketMessage = new TicketMessage(logEntry.getRevision(), logEntry.getMessage(), _messageRewriter);
 		return new Commit(_config, logEntry, ticketMessage);
 	}
