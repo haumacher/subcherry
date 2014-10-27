@@ -166,7 +166,7 @@ public class MergeHandler extends Handler<MergeConfig> {
 				hasMoves = true;
 			}
 
-			if (!_modules.contains(target.getModule())) {
+			if (!isMapped && !_modules.contains(target.getModule())) {
 				// The change happened in a module that is not among the merged modules, drop the
 				// change.
 				continue;
