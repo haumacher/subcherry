@@ -297,7 +297,14 @@ public class MergeCommitHandler {
 					continue;
 				}
 				if (input.startsWith(joinCommand)) {
-					long joinedRevision = Long.parseLong(input.substring(joinCommand.length()));
+					String revisionText = input.substring(joinCommand.length());
+					long joinedRevision;
+					try {
+						joinedRevision = Long.parseLong(revisionText);
+					} catch (NumberFormatException ex) {
+						System.err.println("Not a revision number: " + revisionText);
+						continue;
+					}
 					Commit joinedCommit = getEntry(joinedRevision);
 					if (joinedCommit == null) {
 						System.err.println("Revision [" + joinedRevision + "] is not part of this merge.");
