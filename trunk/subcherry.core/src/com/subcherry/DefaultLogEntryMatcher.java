@@ -102,11 +102,11 @@ public class DefaultLogEntryMatcher extends SVNLogEntryMatcher {
 	}
 
 	private boolean portByTicket(Ticket ticket) {
-		if (_portingTickets.shouldPort(ticket)) {
-			return true;
-		}
 		if (_ignoreTickets.contains(ticket.id())) {
 			return false;
+		}
+		if (_portingTickets.shouldPort(ticket)) {
+			return true;
 		}
 		
 		if (!_milestones.isEmpty()) {
