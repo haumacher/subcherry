@@ -1,0 +1,1 @@
+Subclipse is a plug-in for Eclipse for SVN from the inventors of Subversion.
