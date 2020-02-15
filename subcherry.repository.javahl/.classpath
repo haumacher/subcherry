@@ -3,6 +3,6 @@
 	<classpathentry kind="src" path="src/main/java"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/org.apache.subversion.javahl"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/subcherry.repository"/>
+	<classpathentry combineaccessrules="false" exported="true" kind="src" path="/subcherry.repository"/>
 	<classpathentry kind="output" path="build/classes"/>
 </classpath>
