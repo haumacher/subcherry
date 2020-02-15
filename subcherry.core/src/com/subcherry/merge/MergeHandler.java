@@ -95,6 +95,8 @@ public class MergeHandler extends Handler<MergeConfig> {
 
 	private ResourceMapping _mapping;
 
+	private int _id = 1;
+
 	public MergeHandler(ClientManager clientManager, MergeConfig config, PathParser paths, Set<String> modules) {
 		super(config);
 		_clientManager = clientManager;
@@ -186,6 +188,7 @@ public class MergeHandler extends Handler<MergeConfig> {
 
 			String pathName = svnPathEntry.getPath();
 			if (!usePath(pathName)) {
+				hasMoves = true;
 				continue;
 			}
 
@@ -325,8 +328,8 @@ public class MergeHandler extends Handler<MergeConfig> {
 							CopySource origSrc =
 								CopySource.create(Target.fromFile(srcFile, Revision.WORKING), Revision.WORKING);
 
-							LogEntryPath srcChange = logEntry.getChangedPaths().get(srcPathMapped.getPath());
-							if (srcChange != null) {
+							boolean isChanged = isChanged(logEntry, srcPathMapped);
+							if (isChanged) {
 								// There is a change to the source resource of the copy within the
 								// same commit. Since the original copy was done from the original
 								// (unchanged version of the file), the source file has to be backed
@@ -334,7 +337,7 @@ public class MergeHandler extends Handler<MergeConfig> {
 								// the (backed up) working copy version of the source file without
 								// already copying the changes that are also applied to the source
 								// within the same commit.
-								File backupFile = backupFor(srcFile);
+								File backupFile = backupFor(srcPathMapped, srcFile);
 								Target backupTarget = Target.fromFile(backupFile, Revision.WORKING);
 
 								Copy backup = operations().createCopy();
@@ -437,8 +440,33 @@ public class MergeHandler extends Handler<MergeConfig> {
 		return hasMoves;
 	}
 
-	protected File backupFor(File srcFile) {
-		return new File(srcFile.getParentFile(), srcFile.getName() + ".$$$");
+	private boolean isChanged(LogEntry logEntry, Path path) {
+		String checkPath = path.getPath();
+		int resourceStart = path.getPath().length() - path.getResource().length();
+		while (true) {
+			LogEntryPath srcChange = logEntry.getChangedPaths().get(checkPath);
+			boolean isChanged = srcChange != null;
+			if (isChanged) {
+				return true;
+			}
+
+			int sepIdx = checkPath.lastIndexOf('/');
+			if (sepIdx < resourceStart) {
+				break;
+			}
+
+			checkPath = checkPath.substring(0, sepIdx);
+		}
+		return false;
+	}
+
+	protected File backupFor(Path srcPathMapped, File srcFile) {
+		File backupDir = new File(_config.getWorkspaceRoot(), srcPathMapped.getModule());
+		return new File(backupDir, srcFile.getName() + ".$$$" + newId());
+	}
+
+	private String newId() {
+		return Integer.toString(_id++);
 	}
 
 	private ConflictAction toAction(ChangeType type) {
@@ -705,7 +733,7 @@ public class MergeHandler extends Handler<MergeConfig> {
 				continue;
 			}
 
-			builder.buildMerge(logEntry.getRevision(), changedPath, recordOnly, false);
+			builder.buildMerge(logEntry.getRevision(), changedPath, recordOnly, _config.getIgnoreMergeInfo());
 		}
 	}
 
@@ -802,8 +830,8 @@ public class MergeHandler extends Handler<MergeConfig> {
 
 		Copy copy = operations().createCopy();
 		copy.setRevision(revision);
-		copy.setMakeParents(true);
-		copy.setFailWhenDstExists(false);
+		copy.setMakeParents(false);
+		copy.setFailWhenDstExists(true);
 		copy.setMove(false);
 		copy.setCopySource(copySource);
 		copy.setTarget(Target.fromFile(targetFile));
