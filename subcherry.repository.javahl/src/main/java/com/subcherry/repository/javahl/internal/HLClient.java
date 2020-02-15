@@ -160,6 +160,15 @@ public class HLClient extends DefaultClient {
 	}
 
 	@Override
+	public void cleanup(File path) throws RepositoryException {
+		try {
+			_client.cleanup(path.getAbsolutePath());
+		} catch (ClientException ex) {
+			throw wrap(ex);
+		}
+	}
+
+	@Override
 	public RepositoryURL createRepository(File path, String uuid,
 			boolean enableRevisionProperties, boolean force)
 			throws RepositoryException {

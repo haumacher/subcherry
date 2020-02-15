@@ -73,6 +73,11 @@ public class SKClient extends DefaultClient {
 	}
 
 	@Override
+	public void cleanup(File path) throws RepositoryException {
+		_clientManager.getClient().cleanup(path);
+	}
+
+	@Override
 	public void diff(Target target, Revision startRev, Revision stopRev,
 			Depth depth, boolean useAncestry, OutputStream result) throws RepositoryException {
 		SVNDiffClient diffClient = _clientManager.impl().getDiffClient();

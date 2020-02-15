@@ -121,4 +121,6 @@ public interface Client {
 
 	void resolve(File target, Depth depth, Resolution resolution) throws RepositoryException;
 
+	void cleanup(File path) throws RepositoryException;
+
 }
