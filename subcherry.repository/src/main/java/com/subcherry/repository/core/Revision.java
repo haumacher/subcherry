@@ -92,4 +92,12 @@ public class Revision {
 		return true;
 	}
 
+	public String at() {
+		if (kind() == Revision.Kind.UNDEFINED || kind() == Revision.Kind.WORKING) {
+			return "";
+		} else {
+			return "@" + toString();
+		}
+	}
+
 }

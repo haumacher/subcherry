@@ -95,17 +95,11 @@ public class DefaultCopy extends DefaultTargetDepthCommand implements Copy {
 		StringBuilder result = new StringBuilder();
 		result.append("svn cp");
 		if (getMakeParents()) {
-			result.append(" --make-parents");
-		}
-		if (getFailWhenDstExists()) {
-			result.append(" --fail-when-dst-exists");
+			result.append(" --parents");
 		}
 		if (getMove()) {
 			result.append(" --move");
 		}
-
-		result.append(" --depth ");
-		result.append(getDepth());
 
 		result.append(" ");
 		result.append(getCopySource());

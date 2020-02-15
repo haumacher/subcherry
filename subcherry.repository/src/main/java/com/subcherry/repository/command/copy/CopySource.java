@@ -56,7 +56,7 @@ public class CopySource {
 
 	@Override
 	public String toString() {
-		return getTarget() + "@" + getRevision();
+		return getTarget() + getRevision().at();
 	}
 
 }

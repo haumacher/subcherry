@@ -73,11 +73,7 @@ public abstract class Target {
 
 		@Override
 		public String toString() {
-			if (getPegRevision().kind() != Revision.Kind.UNDEFINED) {
-				return getFile() + "@" + getPegRevision();
-			} else {
-				return getFile().toString();
-			}
+			return getFile() + getPegRevision().at();
 		}
 
 	}
@@ -102,11 +98,7 @@ public abstract class Target {
 
 		@Override
 		public String toString() {
-			if (getPegRevision().kind() != Revision.Kind.UNDEFINED) {
-				return getUrl() + "@" + getPegRevision();
-			} else {
-				return getUrl().toString();
-			}
+			return getUrl() + getPegRevision().at();
 		}
 
 	}

@@ -126,11 +126,12 @@ public class DefaultMerge extends DefaultTargetDepthCommand implements Merge {
 		result.append("svn merge");
 		result.append(" -");
 		result.append(getRevisionRange());
+		result.append(" --accept postpone");
 		if (getAllowMixedRevisions()) {
 			result.append(" --allow-mixed-revisions");
 		}
 		if (getIgnoreAnchestry()) {
-			result.append(" --ignore-anchestry");
+			result.append(" --ignore-ancestry");
 		}
 		if (getRecordOnly()) {
 			result.append(" --record-only");

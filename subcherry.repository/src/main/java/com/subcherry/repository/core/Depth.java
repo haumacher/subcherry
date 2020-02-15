@@ -19,6 +19,16 @@ package com.subcherry.repository.core;
 
 public enum Depth {
 
-	EMPTY, FILES, IMMEDIATES, INFINITY, UNKNOWN
+	EMPTY("empty"), FILES("files"), IMMEDIATES("immediates"), INFINITY("infinity"), UNKNOWN("unknown");
 
+	private String _name;
+
+	private Depth(String name) {
+		_name = name;
+	}
+
+	@Override
+	public String toString() {
+		return _name;
+	}
 }
