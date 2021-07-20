@@ -23,11 +23,11 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Properties;
 
-import junit.framework.TestCase;
-
 import com.subcherry.repository.command.status.StatusType;
 import com.subcherry.repository.core.RepositoryException;
 import com.subcherry.repository.merge.properties.PropertiesMerge;
+
+import junit.framework.TestCase;
 
 /**
  * Test case for {@link PropertiesMerge}.
@@ -73,6 +73,10 @@ public class TestPropertiesMerge extends TestCase {
 
 	public void test09MergeNoConflictAddWithEmptyLineAbove() throws IOException, RepositoryException {
 		doMerge("09-no-conflict-add-with-empty-line-above", StatusType.MERGED);
+	}
+
+	public void test10PreserveTrailingSpace() throws IOException, RepositoryException {
+		doMerge("10-preserve-trailing-space", StatusType.MERGED);
 	}
 
 	private void doMerge(String name, StatusType expectedResult) throws RepositoryException, FileNotFoundException,

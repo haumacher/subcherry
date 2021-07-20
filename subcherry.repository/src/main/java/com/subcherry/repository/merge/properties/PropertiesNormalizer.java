@@ -94,6 +94,22 @@ public class PropertiesNormalizer {
 			writer.write(key);
 			writer.write(" = ");
 			String translation = properties.getProperty(key);
+			int start = 0;
+			int limit = translation.length();
+			while (start < limit) {
+				char ch = translation.charAt(start);
+				if (!whiteSpace(ch)) {
+					break;
+				}
+				start++;
+			}
+			while (limit > start) {
+				char ch = translation.charAt(limit - 1);
+				if (!whiteSpace(ch)) {
+					break;
+				}
+				limit--;
+			}
 			for (int n = 0, cnt = translation.length(); n < cnt; n++) {
 				char ch = translation.charAt(n);
 				switch (ch) {
@@ -109,11 +125,32 @@ public class PropertiesNormalizer {
 						writer.write("\\n");
 						break;
 					}
+					case ' ':
+						if (n >= start && n < limit) {
+							writer.write(ch);
+						} else {
+							writer.write("\\ ");
+						}
+						break;
+					case '\t':
+						if (n >= start && n < limit) {
+							writer.write(ch);
+						} else {
+							writer.write("\\t");
+						}
+						break;
+					case '\f':
+						if (n >= start && n < limit) {
+							writer.write(ch);
+						} else {
+							writer.write("\\f");
+						}
+						break;
 					default: {
 						if (encoder.canEncode(ch)) {
 							writer.write(ch);
 						} else {
-							writer.write("\\u" + fill(Integer.toHexString(ch).toUpperCase()));
+							encode(writer, ch);
 						}
 					}
 				}
@@ -124,6 +161,14 @@ public class PropertiesNormalizer {
 		}
 
 		writer.flush();
+	}
+
+	private static boolean whiteSpace(char ch) {
+		return ch == ' ' || ch == '\t' || ch == '\f';
+	}
+
+	private static void encode(OutputStreamWriter writer, char ch) throws IOException {
+		writer.write("\\u" + fill(Integer.toHexString(ch).toUpperCase()));
 	}
 
 	private static String fill(String hexString) {
