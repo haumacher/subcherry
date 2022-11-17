@@ -34,13 +34,6 @@ import java.util.Set;
 
 public class PropertiesNormalizer {
 
-	private static final String[] SUFFIXES = {
-		".info",
-		".tooltip",
-		".title",
-		".confirm",
-	};
-
 	private static final String NL;
 
 	static {
@@ -83,14 +76,7 @@ public class PropertiesNormalizer {
 		ArrayList<String> keyList = new ArrayList<String>((Set) properties.keySet());
 		Collections.sort(keyList);
 
-		String lastKey = null;
 		for (String key : keyList) {
-			if (lastKey != null) {
-				if (separateWithNewLine(lastKey, key)) {
-					writer.write(NL);
-				}
-			}
-
 			writer.write(key);
 			writer.write(" = ");
 			String translation = properties.getProperty(key);
@@ -156,8 +142,6 @@ public class PropertiesNormalizer {
 				}
 			}
 			writer.write(NL);
-
-			lastKey = key;
 		}
 
 		writer.flush();
@@ -173,36 +157,6 @@ public class PropertiesNormalizer {
 
 	private static String fill(String hexString) {
 		return "0000".substring(hexString.length()) + hexString;
-	}
-
-	public static boolean separateWithNewLine(String lastKey, String key) {
-		return differentSuffix(lastKey, getBaseIndex(lastKey), key, getBaseIndex(key)) &&
-			differentSuffix(lastKey, getBaseIndexBeforePrefix(lastKey), key, getBaseIndex(key)) &&
-			differentSuffix(lastKey, getBaseIndex(lastKey), key, getBaseIndexBeforePrefix(key)) &&
-			differentSuffix(lastKey, getBaseIndexBeforePrefix(lastKey), key, getBaseIndexBeforePrefix(key));
-	}
-
-	private static boolean differentSuffix(String lastKey, int lastSuffixLength, String key, int suffixLength) {
-		boolean separate = lastSuffixLength < 0 || suffixLength < 0 || lastSuffixLength != suffixLength
-			|| !key.substring(0, suffixLength).equals(lastKey.substring(0, lastSuffixLength));
-		return separate;
-	}
-
-	private static int getBaseIndex(String key) {
-		return key.lastIndexOf('.');
-	}
-
-	private static int getBaseIndexBeforePrefix(String key) {
-		return key.lastIndexOf('.', getPrefixLength(key) - 1);
-	}
-
-	private static int getPrefixLength(String key) {
-		for (String suffix : SUFFIXES) {
-			if (key.endsWith(suffix)) {
-				return key.length() - suffix.length();
-			}
-		}
-		return key.length();
 	}
 
 }
